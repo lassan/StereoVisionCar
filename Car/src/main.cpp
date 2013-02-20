@@ -8,6 +8,8 @@
 #include "../header/main.h"
 #include "../header/helperfunctions.h"
 #include "../header/ArduinoInterface.h"
+#include "../header/includeFiles.h"
+
 
 Mat _M1, _D1, _M2, _D2, _R1, _R2, _P1, _P2, _Q;
 
@@ -18,7 +20,9 @@ vector<Mat> _leftFrames, _rightFrames;
 Mat _leftCameraMap1, _leftCameraMap2, _rightCameraMap1, _rightCameraMap2;
 Rect _imageSegment(0, 40, 320, 160);
 
-#define PORT 9900
+#define PORT_send 8800
+#define PORT_recv 9900
+#define PORT_inst 13400
 #define Channel1 0
 #define Channel2 1
 #define Normal 0
@@ -27,6 +31,11 @@ Rect _imageSegment(0, 40, 320, 160);
 int is_data_ready = 0;
 int serversock, clientsock;
 int hasClient = 0;
+
+    int sockfd,recvsock,listensock;
+    struct sockaddr_in servaddr;
+    struct sockaddr_in server;
+
 
 /*Variables for timing*/
 int MAX_TIMING_ITERATIONS = 50;
@@ -62,6 +71,11 @@ bool _serverEnabled = false; //true: requires client availability
 bool _changeNdisparity = false;
 bool _ndispInc = false;
 
+/*byte array to send to the car*/
+unsigned char _speed[13];
+
+bool _systemOverride = false; //control if system should take control
+
 void Initialise()
 {
     /*Set number of threads to 2*/
@@ -71,8 +85,15 @@ void Initialise()
     if (_serverEnabled)
     {
         cout << "Initialising server. Please start the client" << endl;
-        InitServer();
+//        InitServer();
+        cout << "InitDirectionsFromClient. Please start the client" << endl;
+        InitDirectionsFromClient();
+        cout << "InitCarConnection. Please start the client" << endl;
+
+        InitCarConnection();
     }
+
+    InitDrivingArray();
 
     /*Load calibration matrices from file*/
     cout << "Loading camera calibration data" << endl;
@@ -143,6 +164,240 @@ void InitCameras()
     _rightCamera.set(CV_CAP_PROP_FRAME_HEIGHT, 240);
 }
 
+void InitCarConnection()
+{
+
+
+    sockfd = socket(AF_INET, SOCK_DGRAM, 0);
+
+    bzero(&servaddr, sizeof(servaddr));
+    servaddr.sin_family = AF_INET;
+    servaddr.sin_addr.s_addr = inet_addr("192.168.0.20");
+    servaddr.sin_port = htons(PORT_inst);
+}
+
+void InitDirectionsFromClient(){
+
+
+
+    /* open socket */
+    if ((listensock = socket(PF_INET, SOCK_STREAM, 0)) == -1) {
+        cerr << "socket() failed";
+        exit(1);
+    }
+
+    /* setup server's IP and port */
+    memset(&server, 0, sizeof(server));
+    server.sin_family = AF_INET;
+    server.sin_port = htons(PORT_recv);
+    server.sin_addr.s_addr = INADDR_ANY;
+
+    /* bind the socket */
+    if (bind(listensock, (const sockaddr*) &server, sizeof(server)) == -1) {
+        cerr << "bind() failed";
+        exit(1);
+    }
+
+    /* wait for connection */
+    if (listen(listensock, 2) == -1) {
+    }
+
+    /* accept a client */
+    if ((recvsock = accept(listensock, NULL, NULL)) == -1) {
+        cerr << "accept() failed";
+        exit(1);
+    }
+
+}
+
+void CarDrivingWorker()
+{
+    while(true){
+
+        /* select if data available*/
+    int n;
+    fd_set input, used;
+    struct timeval timeout;
+
+    /* Initialize the input set */
+    FD_ZERO(&input);
+    FD_SET(recvsock, &input);
+
+    /* Initialize the timeout structure */
+    timeout.tv_sec = 0;
+    timeout.tv_usec = 1;
+
+//	cout << listensock << endl;
+//	cout << recvsock << endl;
+    used = input;
+
+    /* Do the select */
+    n = select(recvsock + 1, &used, NULL, NULL, &timeout);
+
+    /* See if there was an error */
+    if (n < 0) {
+        perror("select failed");
+    } else if (n == 0) {
+//			puts("TIMEOUT");
+    } else {
+        if (FD_ISSET(recvsock, &used)) {
+            char buffer[20];
+            recv(recvsock, buffer, sizeof(buffer), 0);
+            tutorial::Packet packetHeader;
+            packetHeader.ParseFromArray(buffer, sizeof(buffer));
+            cout << "X axis is " << packetHeader.directionx() << endl;
+            cout << "Y axis is " << packetHeader.directiony() << endl;
+            SendInstructionsToCar(packetHeader.directionx(),packetHeader.directiony());
+        }
+    }
+
+    }
+}
+
+void InitDrivingArray()
+{
+    _speed[0] = 0x06;
+    for(int i = 1; i < 13; i++)
+    {
+        _speed[i] = 0x00;
+    }
+}
+
+void SendInstructionsToCar(int dir_x, int dir_y)
+{
+if(!_systemOverride){
+    switch(dir_x)
+    {
+    case 0:
+        _speed[5] = 0x00;
+        _speed[6] = 0x00;
+        break;
+    case 1:
+        _speed[5] = 0x82;
+        _speed[6] = 0x00;
+        break;
+    case 2:
+        _speed[5] = 0x83;
+        _speed[6] = 0x00;
+        break;
+    case 3:
+        _speed[5] = 0x84;
+        _speed[6] = 0x00;
+        break;
+    case 4:
+        _speed[5] = 0x85;
+        _speed[6] = 0x00;
+        break;
+    case -1:
+        _speed[5] = 0x00;
+        _speed[6] = 0x82;
+        break;
+    case -2:
+        _speed[5] = 0x00;
+        _speed[6] = 0x83;
+        break;
+    case -3:
+        _speed[5] = 0x00;
+        _speed[6] = 0x84;
+        break;
+    case -4:
+        _speed[5] = 0x00;
+        _speed[6] = 0x85;
+        break;
+    default:
+        StopTheCar();
+        break;
+    }
+
+    switch(dir_y)
+    {
+    case 0:
+        _speed[7] = 0x00;
+        _speed[8] = 0x00;
+        break;
+    case 1:
+        _speed[7] = 0x82;
+        _speed[8] = 0x00;
+        break;
+    case 2:
+        _speed[7] = 0x83;
+        _speed[8] = 0x00;
+        break;
+    case 3:
+        _speed[7] = 0x84;
+        _speed[8] = 0x00;
+        break;
+    case 4:
+        _speed[7] = 0x85;
+        _speed[8] = 0x00;
+        break;
+    case -1:
+        _speed[7] = 0x00;
+        _speed[8] = 0x82;
+        break;
+    case -2:
+        _speed[7] = 0x00;
+        _speed[8] = 0x83;
+        break;
+    case -3:
+        _speed[7] = 0x00;
+        _speed[8] = 0x84;
+        break;
+    case -4:
+        _speed[7] = 0x00;
+        _speed[8] = 0x85;
+        break;
+    default:
+        StopTheCar();
+        break;
+    }
+}
+/*
+        unsigned char speed[13];
+        speed[0] = 0x06;
+        speed[1] = 0x00;
+        speed[2] = 0x00;
+        speed[3] = 0x00;
+        speed[4] = 0x00;
+        speed[5] = 0x86;
+        speed[6] = 0x00;
+        speed[7] = 0x82;
+        speed[8] = 0x00;
+        speed[9] = 0x00;
+        speed[10] = 0x00;
+        speed[11] = 0x00;
+        speed[12] = 0x00;
+        if (dir_x > 0) {
+            speed[5] = 0x82 + 1;
+            speed[6] = 0x00;
+        } else if (dir_x == 0) {
+
+        }else{
+            speed[5]= 0x00;
+            speed[6]= 0x82 + 1;
+        }
+
+        if (dir_y > 0) {
+            speed[7] = 0x82 + 1;
+            speed[8] = 0x00;
+        } else if (dir_y == 0) {
+
+        }else{
+            speed[7]= 0x08 +1;
+            speed[8]= 0x08;
+        }
+*/
+        int sentbyte = sendto(sockfd, _speed, 13, 0,
+                (struct sockaddr *) &servaddr, sizeof(servaddr));
+        cout << sentbyte << endl;
+}
+
+void StopTheCar() {
+    _speed[5] = 0x00;
+    _speed[6] = 0x00;
+    int sentbyte = sendto(sockfd, _speed, 13, 0,
+                (struct sockaddr *) &servaddr, sizeof(servaddr));
+}
 //If flag is ASOLUTE, set nDisparity to 16 * disp, else increment/decrement
 //current disparity by 16 * disp
 void InitStereoBM(int disp, FLAGS::NUMDISPARITY flag, int _SADWindowSize)
@@ -597,14 +852,15 @@ int main()
 #pragma omp section
                     {
                         //Have thread for driving instructions here
-
+                        if(_serverEnabled)CarDrivingWorker();
                     }
                 }
 
             }
         }
-        else if (tid == 1)
+        else if (tid == 1){
             DisparityCalculationWorker();
+        }
     }
     return 0;
 }
@@ -623,7 +879,7 @@ void InitServer()
     /* setup server's IP and port */
     memset(&server, 0, sizeof(server));
     server.sin_family = AF_INET;
-    server.sin_port = htons(PORT);
+    server.sin_port = htons(PORT_recv);
     server.sin_addr.s_addr = INADDR_ANY;
 
     /* bind the socket */
@@ -749,42 +1005,4 @@ void checkForData()
 //            cout << "Y coordinate is : "<< header.directiony() << endl;
 //        }
 //    }
-}
-
-void SendInstructions()
-{
-    int sockfd, n;
-    struct sockaddr_in servaddr, cliaddr;
-    socklen_t len;
-    char mesg[10];
-
-    sockfd = socket(AF_INET, SOCK_DGRAM, 0);
-
-    bzero(&servaddr, sizeof(servaddr));
-    servaddr.sin_family = AF_INET;
-    servaddr.sin_addr.s_addr = htonl(INADDR_ANY );
-    servaddr.sin_port = htons(9900);
-    bind(sockfd, (struct sockaddr *) &servaddr, sizeof(servaddr));
-
-    for (;;)
-    {
-        len = sizeof(cliaddr);
-        n = recvfrom(sockfd, mesg, 10, 0, (struct sockaddr *) &cliaddr, &len);
-        int speed[13];
-        speed[0] = 0x06;
-        speed[1] = 0x00;
-        speed[2] = 0x00;
-        speed[3] = 0x00;
-        speed[4] = 0x00;
-        speed[5] = 0x00;
-        speed[6] = 0x10;
-        speed[7] = 0x20;
-        speed[8] = 0x00;
-        speed[9] = 0x00;
-        speed[10] = 0x00;
-        speed[11] = 0x00;
-        speed[12] = 0x00;
-        sendto(sockfd, speed, n, 0, (struct sockaddr *) &cliaddr,
-                sizeof(cliaddr));
-    }
 }

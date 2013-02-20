@@ -27,6 +27,8 @@
 #include <errno.h>    /* Error number definitions */
 #include <sys/ioctl.h>
 #include <getopt.h>
+#include <iostream>
+#include "Packet.pb.h"
 
 using namespace std;
 using namespace cv;

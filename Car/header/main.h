@@ -26,6 +26,14 @@ void Initialise();
 void InitCalibrationData();
 void InitCameras();
 void InitServer();
+void InitDirectionsFromClient();
+void InitCarConnection();
+void InitDrivingArray();
+
+void CarDrivingWorker();
+void SendInstructionsToCar(int dir_x, int dir_y);
+void StopTheCar();
+
 void SendDataToServer(Mat& image);
 void checkForData();
 
