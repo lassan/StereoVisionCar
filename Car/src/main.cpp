@@ -1,15 +1,7 @@
-/*
- * main.cpp
- *
- *  Created on: 27 Nov 2012
- *      Author: hassan
- */
-
 #include "../header/main.h"
 #include "../header/helperfunctions.h"
 #include "../header/ArduinoInterface.h"
 #include "../header/includeFiles.h"
-
 
 Mat _M1, _D1, _M2, _D2, _R1, _R2, _P1, _P2, _Q;
 
@@ -32,10 +24,9 @@ int is_data_ready = 0;
 int serversock, clientsock;
 int hasClient = 0;
 
-    int sockfd,recvsock,listensock;
-    struct sockaddr_in servaddr;
-    struct sockaddr_in server;
-
+int sockfd, recvsock, listensock;
+struct sockaddr_in servaddr;
+struct sockaddr_in server;
 
 /*Variables for timing*/
 int MAX_TIMING_ITERATIONS = 50;
@@ -167,7 +158,6 @@ void InitCameras()
 void InitCarConnection()
 {
 
-
     sockfd = socket(AF_INET, SOCK_DGRAM, 0);
 
     bzero(&servaddr, sizeof(servaddr));
@@ -176,12 +166,12 @@ void InitCarConnection()
     servaddr.sin_port = htons(PORT_inst);
 }
 
-void InitDirectionsFromClient(){
-
-
+void InitDirectionsFromClient()
+{
 
     /* open socket */
-    if ((listensock = socket(PF_INET, SOCK_STREAM, 0)) == -1) {
+    if ((listensock = socket(PF_INET, SOCK_STREAM, 0)) == -1)
+    {
         cerr << "socket() failed";
         exit(1);
     }
@@ -193,17 +183,20 @@ void InitDirectionsFromClient(){
     server.sin_addr.s_addr = INADDR_ANY;
 
     /* bind the socket */
-    if (bind(listensock, (const sockaddr*) &server, sizeof(server)) == -1) {
+    if (bind(listensock, (const sockaddr*) &server, sizeof(server)) == -1)
+    {
         cerr << "bind() failed";
         exit(1);
     }
 
     /* wait for connection */
-    if (listen(listensock, 2) == -1) {
+    if (listen(listensock, 2) == -1)
+    {
     }
 
     /* accept a client */
-    if ((recvsock = accept(listensock, NULL, NULL)) == -1) {
+    if ((recvsock = accept(listensock, NULL, NULL)) == -1)
+    {
         cerr << "accept() failed";
         exit(1);
     }
@@ -212,44 +205,52 @@ void InitDirectionsFromClient(){
 
 void CarDrivingWorker()
 {
-    while(true){
+    while (true)
+    {
 
         /* select if data available*/
-    int n;
-    fd_set input, used;
-    struct timeval timeout;
+        int n;
+        fd_set input, used;
+        struct timeval timeout;
 
-    /* Initialize the input set */
-    FD_ZERO(&input);
-    FD_SET(recvsock, &input);
+        /* Initialize the input set */
+        FD_ZERO(&input);
+        FD_SET(recvsock, &input);
 
-    /* Initialize the timeout structure */
-    timeout.tv_sec = 0;
-    timeout.tv_usec = 1;
+        /* Initialize the timeout structure */
+        timeout.tv_sec = 0;
+        timeout.tv_usec = 1;
 
 //	cout << listensock << endl;
 //	cout << recvsock << endl;
-    used = input;
+        used = input;
 
-    /* Do the select */
-    n = select(recvsock + 1, &used, NULL, NULL, &timeout);
+        /* Do the select */
+        n = select(recvsock + 1, &used, NULL, NULL, &timeout);
 
-    /* See if there was an error */
-    if (n < 0) {
-        perror("select failed");
-    } else if (n == 0) {
-//			puts("TIMEOUT");
-    } else {
-        if (FD_ISSET(recvsock, &used)) {
-            char buffer[20];
-            recv(recvsock, buffer, sizeof(buffer), 0);
-            tutorial::Packet packetHeader;
-            packetHeader.ParseFromArray(buffer, sizeof(buffer));
-            cout << "X axis is " << packetHeader.directionx() << endl;
-            cout << "Y axis is " << packetHeader.directiony() << endl;
-            SendInstructionsToCar(packetHeader.directionx(),packetHeader.directiony());
+        /* See if there was an error */
+        if (n < 0)
+        {
+            perror("select failed");
         }
-    }
+        else if (n == 0)
+        {
+//			puts("TIMEOUT");
+        }
+        else
+        {
+            if (FD_ISSET(recvsock, &used))
+            {
+                char buffer[20];
+                recv(recvsock, buffer, sizeof(buffer), 0);
+                tutorial::Packet packetHeader;
+                packetHeader.ParseFromArray(buffer, sizeof(buffer));
+                cout << "X axis is " << packetHeader.directionx() << endl;
+                cout << "Y axis is " << packetHeader.directiony() << endl;
+                SendInstructionsToCar(packetHeader.directionx(),
+                        packetHeader.directiony());
+            }
+        }
 
     }
 }
@@ -257,7 +258,7 @@ void CarDrivingWorker()
 void InitDrivingArray()
 {
     _speed[0] = 0x06;
-    for(int i = 1; i < 13; i++)
+    for (int i = 1; i < 13; i++)
     {
         _speed[i] = 0x00;
     }
@@ -265,138 +266,106 @@ void InitDrivingArray()
 
 void SendInstructionsToCar(int dir_x, int dir_y)
 {
-if(!_systemOverride){
-    switch(dir_x)
+    if (!_systemOverride)
     {
-    case 0:
-        _speed[5] = 0x00;
-        _speed[6] = 0x00;
-        break;
-    case 1:
-        _speed[5] = 0x82;
-        _speed[6] = 0x00;
-        break;
-    case 2:
-        _speed[5] = 0x83;
-        _speed[6] = 0x00;
-        break;
-    case 3:
-        _speed[5] = 0x84;
-        _speed[6] = 0x00;
-        break;
-    case 4:
-        _speed[5] = 0x85;
-        _speed[6] = 0x00;
-        break;
-    case -1:
-        _speed[5] = 0x00;
-        _speed[6] = 0x82;
-        break;
-    case -2:
-        _speed[5] = 0x00;
-        _speed[6] = 0x83;
-        break;
-    case -3:
-        _speed[5] = 0x00;
-        _speed[6] = 0x84;
-        break;
-    case -4:
-        _speed[5] = 0x00;
-        _speed[6] = 0x85;
-        break;
-    default:
-        StopTheCar();
-        break;
-    }
-
-    switch(dir_y)
-    {
-    case 0:
-        _speed[7] = 0x00;
-        _speed[8] = 0x00;
-        break;
-    case 1:
-        _speed[7] = 0x82;
-        _speed[8] = 0x00;
-        break;
-    case 2:
-        _speed[7] = 0x83;
-        _speed[8] = 0x00;
-        break;
-    case 3:
-        _speed[7] = 0x84;
-        _speed[8] = 0x00;
-        break;
-    case 4:
-        _speed[7] = 0x85;
-        _speed[8] = 0x00;
-        break;
-    case -1:
-        _speed[7] = 0x00;
-        _speed[8] = 0x82;
-        break;
-    case -2:
-        _speed[7] = 0x00;
-        _speed[8] = 0x83;
-        break;
-    case -3:
-        _speed[7] = 0x00;
-        _speed[8] = 0x84;
-        break;
-    case -4:
-        _speed[7] = 0x00;
-        _speed[8] = 0x85;
-        break;
-    default:
-        StopTheCar();
-        break;
-    }
-}
-/*
-        unsigned char speed[13];
-        speed[0] = 0x06;
-        speed[1] = 0x00;
-        speed[2] = 0x00;
-        speed[3] = 0x00;
-        speed[4] = 0x00;
-        speed[5] = 0x86;
-        speed[6] = 0x00;
-        speed[7] = 0x82;
-        speed[8] = 0x00;
-        speed[9] = 0x00;
-        speed[10] = 0x00;
-        speed[11] = 0x00;
-        speed[12] = 0x00;
-        if (dir_x > 0) {
-            speed[5] = 0x82 + 1;
-            speed[6] = 0x00;
-        } else if (dir_x == 0) {
-
-        }else{
-            speed[5]= 0x00;
-            speed[6]= 0x82 + 1;
+        switch (dir_x)
+        {
+        case 0:
+            _speed[5] = 0x00;
+            _speed[6] = 0x00;
+            break;
+        case 1:
+            _speed[5] = 0x82;
+            _speed[6] = 0x00;
+            break;
+        case 2:
+            _speed[5] = 0x83;
+            _speed[6] = 0x00;
+            break;
+        case 3:
+            _speed[5] = 0x84;
+            _speed[6] = 0x00;
+            break;
+        case 4:
+            _speed[5] = 0x85;
+            _speed[6] = 0x00;
+            break;
+        case -1:
+            _speed[5] = 0x00;
+            _speed[6] = 0x82;
+            break;
+        case -2:
+            _speed[5] = 0x00;
+            _speed[6] = 0x83;
+            break;
+        case -3:
+            _speed[5] = 0x00;
+            _speed[6] = 0x84;
+            break;
+        case -4:
+            _speed[5] = 0x00;
+            _speed[6] = 0x85;
+            break;
+        default:
+            StopTheCar();
+            break;
         }
 
-        if (dir_y > 0) {
-            speed[7] = 0x82 + 1;
-            speed[8] = 0x00;
-        } else if (dir_y == 0) {
-
-        }else{
-            speed[7]= 0x08 +1;
-            speed[8]= 0x08;
+        switch (dir_y)
+        {
+        case 0:
+            _speed[7] = 0x00;
+            _speed[8] = 0x00;
+            break;
+        case 1:
+            _speed[7] = 0x82;
+            _speed[8] = 0x00;
+            break;
+        case 2:
+            _speed[7] = 0x83;
+            _speed[8] = 0x00;
+            break;
+        case 3:
+            _speed[7] = 0x84;
+            _speed[8] = 0x00;
+            break;
+        case 4:
+            _speed[7] = 0x85;
+            _speed[8] = 0x00;
+            break;
+        case -1:
+            _speed[7] = 0x00;
+            _speed[8] = 0x82;
+            break;
+        case -2:
+            _speed[7] = 0x00;
+            _speed[8] = 0x83;
+            break;
+        case -3:
+            _speed[7] = 0x00;
+            _speed[8] = 0x84;
+            break;
+        case -4:
+            _speed[7] = 0x00;
+            _speed[8] = 0x85;
+            break;
+        default:
+            StopTheCar();
+            break;
         }
-*/
-        int sentbyte = sendto(sockfd, _speed, 13, 0,
-                (struct sockaddr *) &servaddr, sizeof(servaddr));
-        cout << sentbyte << endl;
+    }
+
+    int sentbyte = sendto(sockfd, _speed, 13, 0, (struct sockaddr *) &servaddr,
+            sizeof(servaddr));
+    cout << sentbyte << endl;
 }
 
-void StopTheCar() {
+void StopTheCar()
+{
     _speed[5] = 0x00;
     _speed[6] = 0x00;
-    int sentbyte = sendto(sockfd, _speed, 13, 0,
-                (struct sockaddr *) &servaddr, sizeof(servaddr));
+    int sentbyte = sendto(sockfd, _speed, 13, 0, (struct sockaddr *) &servaddr,
+            sizeof(servaddr));
 }
 //If flag is ASOLUTE, set nDisparity to 16 * disp, else increment/decrement
 //current disparity by 16 * disp
@@ -852,13 +821,15 @@ int main()
 #pragma omp section
                     {
                         //Have thread for driving instructions here
-                        if(_serverEnabled)CarDrivingWorker();
+                        if (_serverEnabled)
+                            CarDrivingWorker();
                     }
                 }
 
             }
         }
-        else if (tid == 1){
+        else if (tid == 1)
+        {
             DisparityCalculationWorker();
         }
     }
