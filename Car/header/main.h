@@ -15,11 +15,7 @@ struct StereoPair {
     Mat leftImage, rightImage;
 };
 
-struct FLAGS {
-    enum NUMDISPARITY {
-        ABSOLUTE = 0x01, INCREMENT = 0x02, DECREMENT = 0x04
-    };
-};
+
 
 /*Function prototype declarations*/
 void Initialise();

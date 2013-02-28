@@ -9,6 +9,7 @@ RM := rm -rf
 # All of the sources participating in the build are defined here
 -include sources.mk
 -include src/subdir.mk
+-include header/subdir.mk
 -include subdir.mk
 -include objects.mk
 
@@ -44,7 +45,7 @@ all: Car
 Car: $(OBJS) $(USER_OBJS)
 	@echo 'Building target: $@'
 	@echo 'Invoking: GCC C++ Linker'
-	g++ -L/usr/local/lib -o "Car" $(OBJS) $(USER_OBJS) $(LIBS)
+	g++  -o "Car" $(OBJS) $(USER_OBJS) $(LIBS)
 	@echo 'Finished building target: $@'
 	@echo ' '
 

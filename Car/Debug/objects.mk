@@ -4,5 +4,5 @@
 
 USER_OBJS :=
 
-LIBS := -lopencv_core -lgomp -lopencv_flann -lopencv_contrib -lopencv_imgproc -lopencv_highgui -lopencv_video -lopencv_calib3d -lblob -lopencv_legacy
+LIBS := -lopencv_core -lopencv_contrib -lopencv_flann -lopencv_calib3d -lprotobuf -lgomp -lopencv_imgproc -lopencv_highgui -lblob -lopencv_legacy
 

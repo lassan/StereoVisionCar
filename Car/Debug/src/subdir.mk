@@ -4,17 +4,20 @@
 
 # Add inputs and outputs from these tool invocations to the build variables 
 CPP_SRCS += \
-../src/ArduinoInterface.cpp \
+../src/Arduino.cpp \
+../src/Car.cpp \
 ../src/helperfunctions.cpp \
 ../src/main.cpp 
 
 OBJS += \
-./src/ArduinoInterface.o \
+./src/Arduino.o \
+./src/Car.o \
 ./src/helperfunctions.o \
 ./src/main.o 
 
 CPP_DEPS += \
-./src/ArduinoInterface.d \
+./src/Arduino.d \
+./src/Car.d \
 ./src/helperfunctions.d \
 ./src/main.d 
 

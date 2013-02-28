@@ -5,21 +5,21 @@
  *      Author: hassan
  */
 
-#ifndef ARDUINOINTERFACE_H_
-#define ARDUINOINTERFACE_H_
+#ifndef ARDUINO_H_
+#define ARDUINO_H_
 
 #include "../header/includeFiles.h"
 
-class ArduinoInterface
+class Arduino
 {
     int Initialise(const char* serialport, int baud);
     int fda;
 public:
-    ArduinoInterface(const char*, int);
+    Arduino(const char*, int);
     int serialport_writebyte(uint8_t);
     int serialport_write(const char*);
     int serialport_read(char*, char);
 };
 
 
-#endif /* ARDUINOINTERFACE_H_ */
+#endif /* ARDUINO_H_ */

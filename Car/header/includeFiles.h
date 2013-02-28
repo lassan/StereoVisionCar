@@ -33,4 +33,13 @@
 using namespace std;
 using namespace cv;
 
+struct FLAGS {
+    enum NUMDISPARITY {
+        ABSOLUTE = 0x01, INCREMENT = 0x02, DECREMENT = 0x04
+    };
+    enum CARSTATUS{
+    	MOBILE, REVERSE, STATIONARY
+    };
+};
+
 #endif /* INCLUDEFILES_H_ */

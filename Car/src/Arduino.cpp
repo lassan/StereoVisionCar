@@ -4,19 +4,19 @@
  *  Created on: 31 Jan 2013
  *      Author: hassan
  */
-#include "../header/ArduinoInterface.h"
+#include "../header/Arduino.h"
 
 
 // takes the string name of the serial port (e.g. "/dev/tty.usbserial","COM1")
 // and a baud rate (bps) and connects to that port at that speed and 8N1.
 // opens the port in fully raw mode so you can send binary data.
 // returns valid fd, or -1 on error
-ArduinoInterface::ArduinoInterface(const char* serialport, int baud)
+Arduino::Arduino(const char* serialport, int baud)
 {
     fda = Initialise(serialport, baud);
 }
 
-int ArduinoInterface::Initialise(const char* serialport, int baud)
+int Arduino::Initialise(const char* serialport, int baud)
 {
     struct termios toptions;
     int fd;
@@ -89,7 +89,7 @@ int ArduinoInterface::Initialise(const char* serialport, int baud)
     return fd;
 }
 
-int ArduinoInterface::serialport_writebyte(uint8_t b)
+int Arduino::serialport_writebyte(uint8_t b)
 {
     int n = write(fda, &b, 1);
     if (n != 1)
@@ -97,7 +97,7 @@ int ArduinoInterface::serialport_writebyte(uint8_t b)
     return 0;
 }
 
-int ArduinoInterface::serialport_write(const char* str)
+int Arduino::serialport_write(const char* str)
 {
     int len = strlen(str);
     int n = write(fda, str, len);
@@ -106,7 +106,7 @@ int ArduinoInterface::serialport_write(const char* str)
     return 0;
 }
 
-int ArduinoInterface::serialport_read(char* buf, char until)
+int Arduino::serialport_read(char* buf, char until)
 {
     char b[1];
     int i = 0;
