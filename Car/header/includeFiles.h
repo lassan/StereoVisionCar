@@ -33,12 +33,20 @@
 using namespace std;
 using namespace cv;
 
+/*ENUM definitions*/
+struct StereoPair {
+    Mat leftImage, rightImage;
+};
+
 struct FLAGS {
     enum NUMDISPARITY {
         ABSOLUTE = 0x01, INCREMENT = 0x02, DECREMENT = 0x04
     };
     enum CARSTATUS{
-    	MOBILE, REVERSE, STATIONARY
+        MOBILE, REVERSE, STATIONARY
+    };
+    enum CLIENTDISPLAY{
+        LEFT, RIGHT, BLOBS, DISPARITY
     };
 };
 

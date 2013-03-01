@@ -18,7 +18,7 @@ public:
     Arduino(const char*, int);
     int serialport_writebyte(uint8_t);
     int serialport_write(const char*);
-    int serialport_read(char*, char);
+    int serialport_read(char*);
 };
 
 

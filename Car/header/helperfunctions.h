@@ -11,7 +11,6 @@
 #include "../header/includeFiles.h"
 #include "../header/main.h"
 
-
 Scalar GetBlobColor(float mean);
 int LoadMatrixFromFile(string _filePath, string filename, Mat& mat);
 string intToString(int num);

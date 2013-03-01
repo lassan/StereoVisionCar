@@ -14,7 +14,6 @@ Rect _imageSegment(0, 40, 320, 160);
 
 #define PORT_send 8800
 #define PORT_recv 9900
-#define PORT_inst 13400
 #define Channel1 0
 #define Channel2 1
 #define Normal 0
@@ -27,9 +26,9 @@ int hasClient = 0;
 int sockfd, recvsock, listensock;
 struct sockaddr_in servaddr;
 struct sockaddr_in server;
-
+FLAGS::CLIENTDISPLAY clientDisplay = FLAGS::LEFT;
 /*Variables for timing*/
-int MAX_TIMING_ITERATIONS = 50;
+int MAX_TIMING_ITERATIONS = 25;
 
 int currentChannel = 0;
 int currentMode = 0;
@@ -49,7 +48,7 @@ bool _bufferEmpty = true;
 /*Variables for synchronising workers*/
 bool _buffer0Processed = true;
 bool _buffer1Processed = true;
-bool _buffersFull = false;
+static bool _buffersFull = false;
 bool _invalidateDispBufLeft = false;
 bool _invalidateDispBufRight = false;
 
@@ -71,20 +70,21 @@ bool _systemOverride = false; //control if system should take control
 
 Car _car;
 
-void Initialise() {
+void Initialise()
+{
     /*Set number of threads to 3*/
     omp_set_nested(1);
     omp_set_num_threads(OMPTHREADS);
 
-    if (_serverEnabled) {
+    if (_serverEnabled)
+    {
         cout << "Initialising server. Please start the client" << endl;
         InitServer();
         cout << "InitDirectionsFromClient. Please start the client" << endl;
         InitDirectionsFromClient();
     }
-    if(_drivingEnabled)
-        _car.drive(0,0);
-
+    if (_drivingEnabled)
+        _car.drive(0, 0);
 
     /*Load calibration matrices from file*/
     cout << "Loading camera calibration data" << endl;
@@ -103,7 +103,8 @@ void Initialise() {
     //    GenerateSuperImposedImages();
 }
 
-void InitCalibrationData() {
+void InitCalibrationData()
+{
     string filePath = "CalibrationMatrices320/";
     LoadMatrixFromFile(filePath, "M1", _M1);
     LoadMatrixFromFile(filePath, "D1", _D1);
@@ -113,10 +114,11 @@ void InitCalibrationData() {
     LoadMatrixFromFile(filePath, "R2", _R2);
     LoadMatrixFromFile(filePath, "P1", _P1);
     LoadMatrixFromFile(filePath, "P2", _P2);
-    //    LoadMatrixFromFile(filePath,"Q", _Q);
+    LoadMatrixFromFile(filePath, "Q", _Q);
 }
 
-void InitCameras() {
+void InitCameras()
+{
     /*Create rectification matrices*/
     initUndistortRectifyMap(_M1, _D1, _R1, _P1, Size(320, 240), CV_16SC2,
             _leftCameraMap1, _leftCameraMap2);
@@ -126,16 +128,22 @@ void InitCameras() {
     _leftCamera.open(1);
     _rightCamera.open(0);
 
-    if (_leftCamera.isOpened()) {
+    if (_leftCamera.isOpened())
+    {
         cout << "Left camera stream opened" << endl;
-    } else {
+    }
+    else
+    {
         cout << "Left  camera stream failed to open. Terminating" << endl;
         abort();
     }
 
-    if (_rightCamera.isOpened()) {
+    if (_rightCamera.isOpened())
+    {
         cout << "Right camera stream opened" << endl;
-    } else {
+    }
+    else
+    {
         cout << "Right camera stream failed to open. Terminating" << endl;
         abort();
     }
@@ -147,20 +155,12 @@ void InitCameras() {
     _rightCamera.set(CV_CAP_PROP_FRAME_HEIGHT, 240);
 }
 
-void InitCarConnection() {
-
-    sockfd = socket(AF_INET, SOCK_DGRAM, 0);
-
-    bzero(&servaddr, sizeof(servaddr));
-    servaddr.sin_family = AF_INET;
-    servaddr.sin_addr.s_addr = inet_addr("192.168.0.20");
-    servaddr.sin_port = htons(PORT_inst);
-}
-
-void InitDirectionsFromClient() {
+void InitDirectionsFromClient()
+{
 
     /* open socket */
-    if ((listensock = socket(PF_INET, SOCK_STREAM, 0)) == -1) {
+    if ((listensock = socket(PF_INET, SOCK_STREAM, 0)) == -1)
+    {
         cerr << "socket() failed";
         exit(1);
     }
@@ -172,17 +172,20 @@ void InitDirectionsFromClient() {
     server.sin_addr.s_addr = INADDR_ANY;
 
     /* bind the socket */
-    if (bind(listensock, (const sockaddr*) &server, sizeof(server)) == -1) {
+    if (bind(listensock, (const sockaddr*) &server, sizeof(server)) == -1)
+    {
         cerr << "bind() failed";
         exit(1);
     }
 
     /* wait for connection */
-    if (listen(listensock, 2) == -1) {
+    if (listen(listensock, 2) == -1)
+    {
     }
 
     /* accept a client */
-    if ((recvsock = accept(listensock, NULL, NULL)) == -1) {
+    if ((recvsock = accept(listensock, NULL, NULL)) == -1)
+    {
         cerr << "accept() failed";
         exit(1);
     }
@@ -191,7 +194,8 @@ void InitDirectionsFromClient() {
 
 //If flag is ASOLUTE, set nDisparity to 16 * disp, else increment/decrement
 //current disparity by 16 * disp
-void InitStereoBM(int disp, FLAGS::NUMDISPARITY flag, int _SADWindowSize) {
+void InitStereoBM(int disp, FLAGS::NUMDISPARITY flag, int _SADWindowSize)
+{
     if (flag == FLAGS::ABSOLUTE)
         _nOfDisparitiesCoefficient = disp;
     else if (flag == FLAGS::INCREMENT)
@@ -206,21 +210,16 @@ void InitStereoBM(int disp, FLAGS::NUMDISPARITY flag, int _SADWindowSize) {
             << ". Window size set to " << intToString(_SADWindowSize) << endl;
 }
 
-void GenerateSuperImposedImages() {
+void GenerateSuperImposedImages()
+{
     namedWindow("Overlaid");
 
     StereoPair camImages;
 
-    _leftCamera.grab();
-    _leftCamera.retrieve(camImages.leftImage, 0);
+    GetStereoImages(camImages);
 
-    _rightCamera.grab();
-    _rightCamera.retrieve(camImages.rightImage, 0);
-
-    PrepareStereoPairForDisparityCalculation(camImages);
-
-    //    imshow("Right image", camImages.rightImage);
-    //    imshow("Left image", camImages.leftImage);
+    imshow("Right image", camImages.rightImage);
+    imshow("Left image", camImages.leftImage);
 
     Mat overlay = OverlayImages(camImages, 0.5);
     imshow("Overlaid", overlay);
@@ -229,7 +228,14 @@ void GenerateSuperImposedImages() {
     waitKey(0);
 }
 
-void PrepareStereoPairForDisparityCalculation(StereoPair &input) {
+void GetStereoImages(StereoPair &input)
+{
+    _leftCamera.grab();
+    _rightCamera.grab();
+
+    _leftCamera.retrieve(input.leftImage, 0);
+    _rightCamera.retrieve(input.rightImage, 0);
+
     remap(input.leftImage, input.leftImage, _leftCameraMap1, _leftCameraMap2,
             INTER_LINEAR);
     remap(input.rightImage, input.rightImage, _rightCameraMap1,
@@ -241,11 +247,12 @@ void PrepareStereoPairForDisparityCalculation(StereoPair &input) {
     cvtColor(input.leftImage, input.leftImage, CV_RGB2GRAY);
     cvtColor(input.rightImage, input.rightImage, CV_RGB2GRAY);
 
-//	blur(input.leftImage, input.leftImage, Size(3, 3));
-//	blur(input.rightImage, input.rightImage, Size(3, 3));
+    blur(input.leftImage, input.leftImage, Size(3, 3));
+    blur(input.rightImage, input.rightImage, Size(3, 3));
 }
 
-Mat CalculateDisparityBM(StereoPair const & images) {
+Mat CalculateDisparityBM(StereoPair &images)
+{
     int rows = images.leftImage.rows;
     int cols = images.leftImage.cols;
 
@@ -267,7 +274,8 @@ Mat CalculateDisparityBM(StereoPair const & images) {
 }
 
 /*returns true if close obstacle found, else returns false*/
-bool FindBlobs(Mat &bm) {
+bool FindBlobs(Mat &bm)
+{
     Mat element(3, 3, CV_8U, cv::Scalar(1));
 
     Mat displayImage;
@@ -279,9 +287,8 @@ bool FindBlobs(Mat &bm) {
 
     //Declare variables
     CBlobResult blobs;
-//	CBlob *currentBlob;
     int minArea = 125;
-//	false
+
     blobs = CBlobResult(dispIpl, NULL, 0); //get all blobs in the disparity map
     blobs.Filter(blobs, B_EXCLUDE, CBlobGetArea(), B_LESS, minArea); //filter blobs by area and remove all less than minArea
 
@@ -290,27 +297,21 @@ bool FindBlobs(Mat &bm) {
 
     vector<int> meanPixelValues;
 
-    for (int i = 0; i < blobs.GetNumBlobs(); i++) {
+    for (int i = 0; i < blobs.GetNumBlobs(); i++)
+    {
         meanPixelValues.push_back(blobs.GetBlob(i)->Mean(dispIpl));
-    }
-
-    if (_displayBlobs) {
-        for (int i = 0; i < blobs.GetNumBlobs(); i++) {
-            Scalar color = GetBlobColor(meanPixelValues[i]);
-            blobs.GetBlob(i)->FillBlob(displayedImage, color);
-        }
-        displayImage = displayedImage; //Convert to Mat for use in imshow()
-        imshow("Blobs", displayImage);
-        waitKey(5);
     }
 
     cvReleaseImage(&displayedImage);
     vector<int>::const_iterator it;
-    if (meanPixelValues.size() > 0) {
+    if (meanPixelValues.size() > 0)
+    {
         it = max_element(meanPixelValues.begin(), meanPixelValues.end());
 
-        if (*it >= (16 * 15)) {
-            if (_nOfDisparitiesCoefficient <= MAX_NDISPARITY) {
+        if (*it >= (16 * 15))
+        {
+            if (_nOfDisparitiesCoefficient <= MAX_NDISPARITY)
+            {
                 _changeNdisparity = true;
                 _ndispInc = true;
 
@@ -319,9 +320,12 @@ bool FindBlobs(Mat &bm) {
                 else
                     return false;
             }
-        } else if (*it < (16 * 10)) {
+        }
+        else if (*it < (16 * 10))
+        {
 
-            if (_nOfDisparitiesCoefficient > MIN_NDISPARITY) {
+            if (_nOfDisparitiesCoefficient > MIN_NDISPARITY)
+            {
                 _changeNdisparity = true;
                 _ndispInc = false;
 
@@ -336,25 +340,33 @@ bool FindBlobs(Mat &bm) {
 }
 
 Mat canvas = Mat(320, 320, CV_32FC3); //for displaying feedback when disparity is changing
-void ChangeDisparityDynamically() {
+void ChangeDisparityDynamically()
+{
 
-    if (_changeNdisparity) {
+    if (_changeNdisparity)
+    {
         if (_ndispInc) //slow down/ increase disparity
         {
-            if (_nOfDisparitiesCoefficient == MAX_NDISPARITY) {
+            if (_nOfDisparitiesCoefficient == MAX_NDISPARITY)
+            {
                 //Stop car
                 circle(canvas, Point(160, 160), 100, CV_RGB(255,0,0), -1);
                 cout << "Stop the car!" << endl;
                 warnCode = 0;
-            } else {
+            }
+            else
+            {
                 InitStereoBM(1, FLAGS::INCREMENT);
 
                 circle(canvas, Point(160, 160), 100, CV_RGB(255,140,0), -1);
                 cout << "Slow down!" << endl;
                 warnCode = 1;
             }
-        } else if (!_ndispInc) {
-            if (_nOfDisparitiesCoefficient > MIN_NDISPARITY) {
+        }
+        else if (!_ndispInc)
+        {
+            if (_nOfDisparitiesCoefficient > MIN_NDISPARITY)
+            {
                 InitStereoBM(1, FLAGS::DECREMENT);
 
                 circle(canvas, Point(160, 160), 100, CV_RGB(0,128,0), -1);
@@ -363,7 +375,9 @@ void ChangeDisparityDynamically() {
             }
         }
         _changeNdisparity = false;
-    } else {
+    }
+    else
+    {
 //        circle(canvas, Point(160, 160), 100, CV_RGB(0,128,0), -1);
     }
 
@@ -372,8 +386,10 @@ void ChangeDisparityDynamically() {
 
 }
 
-void CarDrivingWorker() {
-    while (true) {
+void CarDrivingWorker()
+{
+    while (true)
+    {
 
         /* select if data available*/
         int n;
@@ -394,81 +410,94 @@ void CarDrivingWorker() {
         n = select(recvsock + 1, &used, NULL, NULL, &timeout);
 
         /* See if there was an error */
-        if (n < 0) {
+        if (n < 0)
+        {
             perror("select failed");
-        } else if (n == 0) {
+        }
+        else if (n == 0)
+        {
 //			puts("TIMEOUT");
-        } else {
-            if (FD_ISSET(recvsock, &used)) {
+        }
+        else
+        {
+            if (FD_ISSET(recvsock, &used))
+            {
                 char buffer[100];
                 recv(recvsock, buffer, sizeof(buffer), 0);
                 tutorial::Packet packetHeader;
                 packetHeader.ParseFromArray(buffer, sizeof(buffer));
-                if(packetHeader.has_directionx() && packetHeader.has_directiony()){
+                if (packetHeader.has_directionx()
+                        && packetHeader.has_directiony())
+                {
                     cout << "X: " << packetHeader.directionx();
                     cout << "\tY: " << packetHeader.directiony() << endl;
-                    if(!_systemOverride)
+                    if (!_systemOverride)
                         _car.drive(packetHeader.directionx(),
-                            packetHeader.directiony());
+                                packetHeader.directiony());
                 }
             }
         }
     }
 }
 
-void ImageAcquisitionWorker() {
+void ClientDisplay(StereoPair &input, Mat &image)
+{
+    if (hasClient)
+    {
+        switch (clientDisplay)
+        {
+        case FLAGS::LEFT:
+            SendDataToClient(input.leftImage);
+            break;
+        case FLAGS::RIGHT:
+            SendDataToClient(input.rightImage);
+            break;
+        case FLAGS::DISPARITY:
+            SendDataToClient(image);
+            break;
+        default:
+            break;
+        }
+    }
+    else
+    {
+        _car.brake(); //stop the car if there is no client.
+        ListenForClient();
+    }
+}
+
+void ImageAcquisitionWorker()
+{
     int iterationCounter = 0;
     float iterationTime = 0;
     float totalTime = 0;
 
-    while (1) {
-
+    while (1)
+    {
         iterationTime = getTickCount();
 
 #pragma omp critical(buffer0)
         {
 
-            if (_buffer0Processed) {
-
+            if (_buffer0Processed)
+            {
                 /*Blobs for disparity from image in buffer 0*/
-                if (_disparityBuffer.leftImage.data != NULL) {
-                    if (_invalidateDispBufLeft) {
+                if (_disparityBuffer.leftImage.data != NULL)
+                {
+                    if (_invalidateDispBufLeft)
+                    {
                         _invalidateDispBufLeft = false;
-                    } else if (FindBlobs(_disparityBuffer.leftImage)) {
+                    }
+                    else if (FindBlobs(_disparityBuffer.leftImage))
+                    {
                         _invalidateDispBufRight = true;
                     }
-                    if (!_changeDisparityDynamically && !_displayBlobs) {
-                        imshow("disparity", _disparityBuffer.leftImage);
-                        waitKey(2);
-                    }
-
                 }
 
-                _leftCamera.grab();
-                _rightCamera.grab();
+                GetStereoImages(_buffer0);
 
-                _leftCamera.retrieve(_buffer0.leftImage, 0);
-                _rightCamera.retrieve(_buffer0.rightImage, 0);
-
-                PrepareStereoPairForDisparityCalculation(_buffer0);
-
-                /*Server stuff*/
-                if (_serverEnabled) {
-                    if (hasClient) {
-                        if (currentMode == Normal) {
-                            if (currentChannel == Channel1) {
-                                SendDataToServer(_buffer0.leftImage);
-                            } else {
-                                SendDataToServer(_buffer0.rightImage);
-                            }
-                        } else
-                            SendDataToServer(_disparityBuffer.leftImage);
-                        checkForData();
-                    } else {
-                        ListenForClient();
-                    }
-                }
-                /*End server stuff*/
+                if (_serverEnabled)
+                    ClientDisplay(_buffer0, _disparityBuffer.leftImage);
 
                 _buffer0Processed = false;
 
@@ -478,49 +507,25 @@ void ImageAcquisitionWorker() {
 #pragma omp critical(buffer1)
         {
 
-            if (_buffer1Processed) {
-
+            if (_buffer1Processed)
+            {
                 /*Blobs for disparity from image in buffer 1*/
-                if (_disparityBuffer.rightImage.data != NULL) {
-                    if (_invalidateDispBufRight) {
+                if (_disparityBuffer.rightImage.data != NULL)
+                {
+                    if (_invalidateDispBufRight)
+                    {
                         _invalidateDispBufRight = false;
-                    } else if (FindBlobs(_disparityBuffer.rightImage)) {
+                    }
+                    else if (FindBlobs(_disparityBuffer.rightImage))
+                    {
                         _invalidateDispBufLeft = true;
                     }
-                    if (!_changeDisparityDynamically && !_displayBlobs) {
-                        imshow("disparity", _disparityBuffer.rightImage);
-                        waitKey(2);
-                    }
                 }
 
-                _leftCamera.grab();
-                _rightCamera.grab();
+                GetStereoImages(_buffer1);
 
-                _leftCamera.retrieve(_buffer1.leftImage, 0);
-                _rightCamera.retrieve(_buffer1.rightImage, 0);
-
-                PrepareStereoPairForDisparityCalculation(_buffer1);
-
-                /*Server stuff*/
-                if (_serverEnabled) {
-                    if (hasClient) {
-                        if (currentMode == Normal) {
-                            switch (currentChannel) {
-                            case Channel1:
-                                SendDataToServer(_buffer0.leftImage);
-                                break;
-                            default:
-                                SendDataToServer(_buffer0.rightImage);
-                                break;
-                            }
-                        } else
-                            SendDataToServer(_disparityBuffer.rightImage);
-                        checkForData();
-                    } else {
-                        ListenForClient();
-                    }
-                }
-                /*End server stuff*/
+                if (_serverEnabled)
+                    ClientDisplay(_buffer1, _disparityBuffer.rightImage);
 
                 _buffer1Processed = false;
 
@@ -532,7 +537,8 @@ void ImageAcquisitionWorker() {
 
         iterationTime = (getTickCount() - iterationTime) * 0.000000001;
         totalTime += iterationTime;
-        if (iterationCounter >= MAX_TIMING_ITERATIONS) {
+        if (iterationCounter >= MAX_TIMING_ITERATIONS)
+        {
             cout << "Image acquisition and preparation (fps): "
                     << (iterationCounter * 2) / totalTime << endl;
             iterationCounter = 0;
@@ -542,14 +548,16 @@ void ImageAcquisitionWorker() {
 
 }
 
-void DisparityCalculationWorker() {
+void DisparityCalculationWorker()
+{
     int iterationCounter = 0;
     float iterationTime = 0;
     float totalTime = 0;
 
     /*Print reassuring message*/
     cout << "Waiting for buffers to fill.";
-    while (!_buffersFull) {
+    while (!_buffersFull)
+    {
         float tempTime = getTickCount();
         tempTime = (getTickCount() - tempTime) * 0.000000001;
         if (tempTime > 0.01)
@@ -557,7 +565,8 @@ void DisparityCalculationWorker() {
     }
     cout << endl << "Buffers full. Commencing processing" << endl;
 
-    while (true) {
+    while (true)
+    {
         iterationTime = getTickCount();
 
 #pragma omp critical(buffer1)
@@ -566,26 +575,22 @@ void DisparityCalculationWorker() {
             if (_changeDisparityDynamically)
                 ChangeDisparityDynamically();
 
-            if (!_buffer1Processed) {
-
+            if (!_buffer1Processed)
+            {
                 _disparityBuffer.rightImage = CalculateDisparityBM(_buffer1);
-
                 _buffer1Processed = true;
 
                 iterationCounter++;
             }
         }
-
 #pragma omp critical(buffer0)
         {
-
             if (_changeDisparityDynamically)
                 ChangeDisparityDynamically();
 
-            if (!_buffer0Processed) {
-
+            if (!_buffer0Processed)
+            {
                 _disparityBuffer.leftImage = CalculateDisparityBM(_buffer0);
-
                 _buffer0Processed = true;
 
                 iterationCounter++;
@@ -594,7 +599,8 @@ void DisparityCalculationWorker() {
 
         iterationTime = (getTickCount() - iterationTime) * 0.000000001;
         totalTime += iterationTime;
-        if (iterationCounter >= MAX_TIMING_ITERATIONS) {
+        if (iterationCounter >= MAX_TIMING_ITERATIONS)
+        {
             cout << "Image processing (fps): "
                     << (iterationCounter * 2) / totalTime << endl;
             iterationCounter = 0;
@@ -603,7 +609,8 @@ void DisparityCalculationWorker() {
     }
 }
 
-int main() {
+int main()
+{
     Initialise();
     destroyAllWindows();
 
@@ -614,7 +621,8 @@ int main() {
 
         tid = omp_get_thread_num();
 
-        if (tid == 0) {
+        if (tid == 0)
+        {
 #pragma omp parallel
             {
 #pragma omp sections
@@ -633,18 +641,22 @@ int main() {
                 }
 
             }
-        } else if (tid == 1) {
+        }
+        else if (tid == 1)
+        {
             DisparityCalculationWorker();
         }
     }
     return 0;
 }
 
-void InitServer() {
+void InitServer()
+{
     struct sockaddr_in server;
 
     /* open socket */
-    if ((serversock = socket(PF_INET, SOCK_STREAM, 0)) == -1) {
+    if ((serversock = socket(PF_INET, SOCK_STREAM, 0)) == -1)
+    {
         cerr << "socket() failed";
         exit(1);
     }
@@ -656,18 +668,21 @@ void InitServer() {
     server.sin_addr.s_addr = INADDR_ANY;
 
     /* bind the socket */
-    if (bind(serversock, (const sockaddr*) &server, sizeof(server)) == -1) {
+    if (bind(serversock, (const sockaddr*) &server, sizeof(server)) == -1)
+    {
         //quit("bind() failed", 1);
         cerr << "bind() failed";
         exit(1);
     }
 
     /* wait for connection */
-    if (listen(serversock, 2) == -1) {
+    if (listen(serversock, 2) == -1)
+    {
     }
 
     /* accept a client */
-    if ((clientsock = accept(serversock, NULL, NULL)) == -1) {
+    if ((clientsock = accept(serversock, NULL, NULL)) == -1)
+    {
         cerr << "accept() failed";
         exit(1);
     }
@@ -675,36 +690,33 @@ void InitServer() {
 
 }
 
-void ListenForClient() {
+void ListenForClient()
+{
     /* wait for connection */
-    if (listen(serversock, 2) == -1) {
+    if (listen(serversock, 2) == -1)
+    {
     }
 
     /* accept a client */
-    if ((clientsock = accept(serversock, NULL, NULL)) == -1) {
+    if ((clientsock = accept(serversock, NULL, NULL)) == -1)
+    {
         cerr << "accept() failed";
         exit(1);
     }
     hasClient = 1;
 }
 
-void SendDataToServer(Mat &image) {
+void SendDataToClient(Mat &image)
+{
     IplImage *img1 = new IplImage(image);
 
     int bytes = 0;
 
-//	if (_changeDisparityDynamically) {
-//		tutorial::Packet inform;
-//		inform.set_warnmsg(warnCode);
-//		char* temp[10];
-//		inform.SerializeToArray(temp,10);
-//		send(clientsock, temp, 10, 0);
-//	}
-
     bytes = send(clientsock, img1->imageData, img1->imageSize, 0);
 
     /* if something went wrong, restart the connection */
-    if (bytes != img1->imageSize) {
+    if (bytes != img1->imageSize)
+    {
         fprintf(stderr, "Connection closed.\n");
         close(clientsock);
         hasClient = 0;
@@ -712,7 +724,8 @@ void SendDataToServer(Mat &image) {
 //	cvReleaseImage(&(img1));
 }
 
-void checkForData() {
+void checkForData()
+{
 //    int n = 0;
 //    fd_set input;
 //    struct timeval timeout;

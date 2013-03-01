@@ -10,12 +10,6 @@
 
 #include "../header/includeFiles.h"
 
-/*ENUM definitions*/
-struct StereoPair {
-    Mat leftImage, rightImage;
-};
-
-
 
 /*Function prototype declarations*/
 void Initialise();
@@ -30,17 +24,19 @@ void CarDrivingWorker();
 void SendInstructionsToCar(int dir_x, int dir_y);
 void StopTheCar();
 
-void SendDataToServer(Mat& image);
+void SendDataToClient(Mat& image);
 void checkForData();
 
 void InitStereoBM(int disp, FLAGS::NUMDISPARITY flag = FLAGS::ABSOLUTE,
         int _SADWindowSize = 21);
 
+void ClientDisplay(StereoPair &input, Mat &image);
 
-void PrepareStereoPairForDisparityCalculation(StereoPair &input);
+
+void GetStereoImages(StereoPair &input);
 void GenerateSuperImposedImages();
 
-Mat CalculateDisparityBM(StereoPair const &images);
+Mat CalculateDisparityBM(StereoPair &images);
 bool FindBlobs(Mat &bm);
 void ChangeDisparityDynamically();
 void ListenForClient();

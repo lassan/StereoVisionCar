@@ -12,20 +12,19 @@
 
 class Car
 {
-	void InitialiseConnection();
-	void InitialiseArray();
-	void setStatus();
+    void InitialiseConnection();
+    void InitialiseArray();
 
-	unsigned char _dataPacket[13];
-	struct sockaddr_in servaddr;
-	int sockfd;
-	FLAGS::CARSTATUS carStatus;
+    unsigned char _dataPacket[13];
+    struct sockaddr_in servaddr;
+    int sockfd;
+    FLAGS::CARSTATUS carStatus;
 public:
-	Car();
-	void drive(int x, int y);
-	void brake();
-	int speed();
-	FLAGS::CARSTATUS status();
+    Car();
+    void drive(int, int);
+    void brake();
+    double speed();
+    FLAGS::CARSTATUS status();
 };
 
 

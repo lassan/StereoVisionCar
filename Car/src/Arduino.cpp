@@ -106,10 +106,11 @@ int Arduino::serialport_write(const char* str)
     return 0;
 }
 
-int Arduino::serialport_read(char* buf, char until)
+int Arduino::serialport_read(char* buf)
 {
     char b[1];
     int i = 0;
+    char until = '\0';
     do
     {
         int n = read(fda, buf, 1);
@@ -123,6 +124,6 @@ int Arduino::serialport_read(char* buf, char until)
         buf[i] = b[0];
         i++;
     } while (b[0] != until);
-    buf[i] = 0;
+    buf[i] = '\0';
     return 0;
 }
