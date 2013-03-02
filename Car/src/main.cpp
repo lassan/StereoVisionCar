@@ -1,6 +1,7 @@
 #include "../header/main.h"
 #include "../header/includeFiles.h"
 #include "../header/helperfunctions.h"
+#include "../header/Stereo.h"
 #include "../header/Car.h"
 
 Mat _M1, _D1, _M2, _D2, _R1, _R2, _P1, _P2, _Q;
@@ -28,7 +29,7 @@ struct sockaddr_in servaddr;
 struct sockaddr_in server;
 FLAGS::CLIENTDISPLAY clientDisplay = FLAGS::LEFT;
 /*Variables for timing*/
-int MAX_TIMING_ITERATIONS = 25;
+int MAX_TIMING_ITERATIONS = 100;
 
 int currentChannel = 0;
 int currentMode = 0;
@@ -68,6 +69,7 @@ bool _carMoving = true;
 
 bool _systemOverride = false; //control if system should take control
 
+Stereo _stereo(MIN_NDISPARITY, 21);
 Car _car;
 
 void Initialise()
@@ -93,10 +95,6 @@ void Initialise()
     /*Open camera streams*/
     cout << "Initialising stereo cameras" << endl;
     InitCameras();
-
-    /*Set default block matching parameters*/
-    cout << "Initialising disparity map generator" << endl;
-    InitStereoBM(MIN_NDISPARITY);
 
     /*Generate Superimposed images*/
     //    cout << "Generating superimposed image sample" << endl;
@@ -126,7 +124,7 @@ void InitCameras()
             _rightCameraMap1, _rightCameraMap2);
 
     _leftCamera.open(1);
-    _rightCamera.open(0);
+    _rightCamera.open(2);
 
     if (_leftCamera.isOpened())
     {
@@ -192,24 +190,6 @@ void InitDirectionsFromClient()
 
 }
 
-//If flag is ASOLUTE, set nDisparity to 16 * disp, else increment/decrement
-//current disparity by 16 * disp
-void InitStereoBM(int disp, FLAGS::NUMDISPARITY flag, int _SADWindowSize)
-{
-    if (flag == FLAGS::ABSOLUTE)
-        _nOfDisparitiesCoefficient = disp;
-    else if (flag == FLAGS::INCREMENT)
-        _nOfDisparitiesCoefficient += disp;
-    else if (flag == FLAGS::DECREMENT)
-        _nOfDisparitiesCoefficient -= disp;
-
-    _sbm = StereoBM(StereoBM::BASIC_PRESET, 16 * _nOfDisparitiesCoefficient,
-            _SADWindowSize);
-
-    cout << "nDisparity set to " << intToString(_nOfDisparitiesCoefficient)
-            << ". Window size set to " << intToString(_SADWindowSize) << endl;
-}
-
 void GenerateSuperImposedImages()
 {
     namedWindow("Overlaid");
@@ -249,28 +229,6 @@ void GetStereoImages(StereoPair &input)
 
     blur(input.leftImage, input.leftImage, Size(3, 3));
     blur(input.rightImage, input.rightImage, Size(3, 3));
-}
-
-Mat CalculateDisparityBM(StereoPair &images)
-{
-    int rows = images.leftImage.rows;
-    int cols = images.leftImage.cols;
-
-    Mat imgDisparity16S = Mat(rows, cols, CV_16S);
-    Mat imgDisparity8U = Mat(rows, cols, CV_8UC1);
-
-    //Calculate the disparity image
-    _sbm(images.leftImage, images.rightImage, imgDisparity16S, CV_16S);
-
-    //Check the extreme values
-    double minVal;
-    double maxVal;
-    minMaxLoc(imgDisparity16S, &minVal, &maxVal);
-
-    //Prepare for display
-    imgDisparity16S.convertTo(imgDisparity8U, CV_8UC1, 255 / (maxVal - minVal));
-
-    return imgDisparity8U;
 }
 
 /*returns true if close obstacle found, else returns false*/
@@ -342,47 +300,47 @@ bool FindBlobs(Mat &bm)
 Mat canvas = Mat(320, 320, CV_32FC3); //for displaying feedback when disparity is changing
 void ChangeDisparityDynamically()
 {
-
-    if (_changeNdisparity)
-    {
-        if (_ndispInc) //slow down/ increase disparity
-        {
-            if (_nOfDisparitiesCoefficient == MAX_NDISPARITY)
-            {
-                //Stop car
-                circle(canvas, Point(160, 160), 100, CV_RGB(255,0,0), -1);
-                cout << "Stop the car!" << endl;
-                warnCode = 0;
-            }
-            else
-            {
-                InitStereoBM(1, FLAGS::INCREMENT);
-
-                circle(canvas, Point(160, 160), 100, CV_RGB(255,140,0), -1);
-                cout << "Slow down!" << endl;
-                warnCode = 1;
-            }
-        }
-        else if (!_ndispInc)
-        {
-            if (_nOfDisparitiesCoefficient > MIN_NDISPARITY)
-            {
-                InitStereoBM(1, FLAGS::DECREMENT);
-
-                circle(canvas, Point(160, 160), 100, CV_RGB(0,128,0), -1);
-                cout << "Speed up!" << endl;
-                warnCode = 2;
-            }
-        }
-        _changeNdisparity = false;
-    }
-    else
-    {
-//        circle(canvas, Point(160, 160), 100, CV_RGB(0,128,0), -1);
-    }
-
-    imshow("canvas", canvas);
-    waitKey(20);
+//
+//    if (_changeNdisparity)
+//    {
+//        if (_ndispInc) //slow down/ increase disparity
+//        {
+//            if (_nOfDisparitiesCoefficient == MAX_NDISPARITY)
+//            {
+//                //Stop car
+//                circle(canvas, Point(160, 160), 100, CV_RGB(255,0,0), -1);
+//                cout << "Stop the car!" << endl;
+//                warnCode = 0;
+//            }
+//            else
+//            {
+//                InitStereoBM(1, FLAGS::INCREMENT);
+//
+//                circle(canvas, Point(160, 160), 100, CV_RGB(255,140,0), -1);
+//                cout << "Slow down!" << endl;
+//                warnCode = 1;
+//            }
+//        }
+//        else if (!_ndispInc)
+//        {
+//            if (_nOfDisparitiesCoefficient > MIN_NDISPARITY)
+//            {
+//                InitStereoBM(1, FLAGS::DECREMENT);
+//
+//                circle(canvas, Point(160, 160), 100, CV_RGB(0,128,0), -1);
+//                cout << "Speed up!" << endl;
+//                warnCode = 2;
+//            }
+//        }
+//        _changeNdisparity = false;
+//    }
+//    else
+//    {
+////        circle(canvas, Point(160, 160), 100, CV_RGB(0,128,0), -1);
+//    }
+//
+//    imshow("canvas", canvas);
+//    waitKey(20);
 
 }
 
@@ -446,17 +404,17 @@ void ClientDisplay(StereoPair &input, Mat &image)
     {
         switch (clientDisplay)
         {
-        case FLAGS::LEFT:
-            SendDataToClient(input.leftImage);
-            break;
-        case FLAGS::RIGHT:
-            SendDataToClient(input.rightImage);
-            break;
-        case FLAGS::DISPARITY:
-            SendDataToClient(image);
-            break;
-        default:
-            break;
+            case FLAGS::LEFT:
+                SendDataToClient(input.leftImage);
+                break;
+            case FLAGS::RIGHT:
+                SendDataToClient(input.rightImage);
+                break;
+            case FLAGS::DISPARITY:
+                SendDataToClient(image);
+                break;
+            default:
+                break;
         }
     }
     else
@@ -484,14 +442,21 @@ void ImageAcquisitionWorker()
                 /*Blobs for disparity from image in buffer 0*/
                 if (_disparityBuffer.leftImage.data != NULL)
                 {
-                    if (_invalidateDispBufLeft)
+//                    if (_invalidateDispBufLeft)
+//                    {
+//                        _invalidateDispBufLeft = false;
+//                    }
+//                    else if (FindBlobs(_disparityBuffer.leftImage))
+//                    {
+//                        _invalidateDispBufRight = true;
+//                    }
+
+                    Rect* obj = _stereo.closestObject(
+                            _disparityBuffer.leftImage);
+                    if (obj != NULL)
                     {
-                        _invalidateDispBufLeft = false;
                     }
-                    else if (FindBlobs(_disparityBuffer.leftImage))
-                    {
-                        _invalidateDispBufRight = true;
-                    }
+
                 }
 
                 GetStereoImages(_buffer0);
@@ -512,13 +477,19 @@ void ImageAcquisitionWorker()
                 /*Blobs for disparity from image in buffer 1*/
                 if (_disparityBuffer.rightImage.data != NULL)
                 {
-                    if (_invalidateDispBufRight)
+//                    if (_invalidateDispBufRight)
+//                    {
+//                        _invalidateDispBufRight = false;
+//                    }
+//                    else if (FindBlobs(_disparityBuffer.rightImage))
+//                    {
+//                        _invalidateDispBufLeft = true;
+//                    }
+
+                    Rect* obj = _stereo.closestObject(
+                            _disparityBuffer.rightImage);
+                    if (obj != NULL)
                     {
-                        _invalidateDispBufRight = false;
-                    }
-                    else if (FindBlobs(_disparityBuffer.rightImage))
-                    {
-                        _invalidateDispBufLeft = true;
                     }
                 }
 
@@ -577,7 +548,7 @@ void DisparityCalculationWorker()
 
             if (!_buffer1Processed)
             {
-                _disparityBuffer.rightImage = CalculateDisparityBM(_buffer1);
+                _disparityBuffer.rightImage = _stereo.disparityMap(_buffer1);
                 _buffer1Processed = true;
 
                 iterationCounter++;
@@ -590,7 +561,7 @@ void DisparityCalculationWorker()
 
             if (!_buffer0Processed)
             {
-                _disparityBuffer.leftImage = CalculateDisparityBM(_buffer0);
+                _disparityBuffer.leftImage = _stereo.disparityMap(_buffer0);
                 _buffer0Processed = true;
 
                 iterationCounter++;
@@ -612,7 +583,7 @@ void DisparityCalculationWorker()
 int main()
 {
     Initialise();
-    destroyAllWindows();
+//    destroyAllWindows();
 
     int tid;
 

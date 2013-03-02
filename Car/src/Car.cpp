@@ -3,7 +3,7 @@
 
 #define PORT_inst 13400
 
-Arduino arduino("/dev/ttyS0", 9600);
+//Arduino arduino("/dev/ttyS0", 9600);
 Car::Car()
 {
     InitialiseConnection();
@@ -119,7 +119,7 @@ void Car::brake()
 double Car::speed()
 {
     char* data;
-    arduino.serialport_read(data);
+//    arduino.serialport_read(data);
 
     int len = 0;
     while(data[len] != '\0')

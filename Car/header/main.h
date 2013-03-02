@@ -27,9 +27,6 @@ void StopTheCar();
 void SendDataToClient(Mat& image);
 void checkForData();
 
-void InitStereoBM(int disp, FLAGS::NUMDISPARITY flag = FLAGS::ABSOLUTE,
-        int _SADWindowSize = 21);
-
 void ClientDisplay(StereoPair &input, Mat &image);
 
 
