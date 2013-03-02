@@ -80,9 +80,37 @@ Rect* Stereo::closestObject(Mat &dispMap)
     if (meanPixelValues.size() > 0)
     {
         it = max_element(meanPixelValues.begin(), meanPixelValues.end());
-        return &boundingBoxes[it - meanPixelValues.begin()];
+
+        objectBoundingBox = boundingBoxes[it - meanPixelValues.begin()]; //copy variable to return (it will go out of scope otherwise)
+        return &objectBoundingBox;
     }
     else
         return NULL;
+}
+int Stereo::distanceToObject(Mat& dispMap, Mat& Q)
+{
+//    cout << "Reprojecting" << endl;
+
+    Mat output = Mat(dispMap.size(), CV_32FC3);
+
+    Scalar transform = Q * Scalar(0, 0, 120, 1);
+
+    cout << transform.val[0] << "\t" << transform.val[1] << "\t"
+            << transform.val[2] << "\t" << transform.val[3] << endl;
+
+//    reprojectImageTo3D(dispMap, output, Q);
+
+//    for(int row = 0; row < dispMap.rows; row++)
+//    {
+    for (int col = 0; col < dispMap.cols; col++)
+//        {
+//            cout << (double)output.at<Vec3b>(row,col)[0]
+//                 << "\t" << (double)output.at<Vec3b>(row,col)[1]
+//                 << "\t" << (double)output.at<Vec3b>(row,col)[2]
+//                 << endl;
+//        }
+//    }
+        return 0;
+
 }
 

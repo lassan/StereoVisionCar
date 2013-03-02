@@ -123,8 +123,8 @@ void InitCameras()
     initUndistortRectifyMap(_M2, _D2, _R2, _P2, Size(320, 240), CV_16SC2,
             _rightCameraMap1, _rightCameraMap2);
 
-    _leftCamera.open(1);
-    _rightCamera.open(2);
+    _leftCamera.open(2);
+    _rightCamera.open(1);
 
     if (_leftCamera.isOpened())
     {
@@ -437,6 +437,7 @@ void ImageAcquisitionWorker()
 #pragma omp critical(buffer0)
         {
 
+            cout << _car.speed() << endl;
             if (_buffer0Processed)
             {
                 /*Blobs for disparity from image in buffer 0*/
@@ -451,11 +452,15 @@ void ImageAcquisitionWorker()
 //                        _invalidateDispBufRight = true;
 //                    }
 
-                    Rect* obj = _stereo.closestObject(
-                            _disparityBuffer.leftImage);
-                    if (obj != NULL)
-                    {
-                    }
+//                    Rect* obj = _stereo.closestObject(_disparityBuffer.leftImage);
+//
+//                    if(obj != NULL)
+//                    {
+////                        imshow("roi", _disparityBuffer.leftImage(*obj));
+////                        waitKey(500);
+//                        Mat roi = _disparityBuffer.leftImage(*obj);
+//                        _stereo.distanceToObject(roi,_Q);
+//                    }
 
                 }
 
@@ -486,11 +491,11 @@ void ImageAcquisitionWorker()
 //                        _invalidateDispBufLeft = true;
 //                    }
 
-                    Rect* obj = _stereo.closestObject(
-                            _disparityBuffer.rightImage);
-                    if (obj != NULL)
-                    {
-                    }
+//                    Rect* obj = _stereo.closestObject(
+//                            _disparityBuffer.rightImage);
+//                    if (obj != NULL)
+//                    {
+//                    }
                 }
 
                 GetStereoImages(_buffer1);
