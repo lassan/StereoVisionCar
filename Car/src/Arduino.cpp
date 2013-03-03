@@ -6,6 +6,11 @@
  */
 #include "../header/Arduino.h"
 
+#define PORT "/dev/ttyACM1"
+
+//using namespace LibSerial;
+
+//SerialStream ardu;
 
 // takes the string name of the serial port (e.g. "/dev/tty.usbserial","COM1")
 // and a baud rate (bps) and connects to that port at that speed and 8N1.
@@ -13,7 +18,14 @@
 // returns valid fd, or -1 on error
 Arduino::Arduino(const char* serialport, int baud)
 {
-    fda = Initialise(serialport, baud);
+    cout << "Creating Arduino object." << endl;/*
+    ardu.Open(PORT);
+
+    ardu.SetBaudRate(SerialStreamBuf::BAUD_57600);
+    ardu.SetCharSize(SerialStreamBuf::CHAR_SIZE_8);
+    ardu.SetParity(SerialStreamBuf::PARITY_NONE);
+    ardu.SetFlowControl(SerialStreamBuf::FLOW_CONTROL_NONE);*/
+        fda = Initialise(serialport, baud);
 }
 
 int Arduino::Initialise(const char* serialport, int baud)
@@ -43,13 +55,13 @@ int Arduino::Initialise(const char* serialport, int baud)
         brate = B9600;
         break;
 #ifdef B14400
-        case 14400: brate=B14400; break;
+    case 14400: brate=B14400; break;
 #endif
     case 19200:
         brate = B19200;
         break;
 #ifdef B28800
-        case 28800: brate=B28800; break;
+    case 28800: brate=B28800; break;
 #endif
     case 38400:
         brate = B38400;

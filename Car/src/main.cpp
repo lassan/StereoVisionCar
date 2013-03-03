@@ -1,8 +1,8 @@
-#include "../header/main.h"
 #include "../header/includeFiles.h"
 #include "../header/helperfunctions.h"
 #include "../header/Stereo.h"
 #include "../header/Car.h"
+#include "../header/main.h"
 
 Mat _M1, _D1, _M2, _D2, _R1, _R2, _P1, _P2, _Q;
 
@@ -231,119 +231,6 @@ void GetStereoImages(StereoPair &input)
     blur(input.rightImage, input.rightImage, Size(3, 3));
 }
 
-/*returns true if close obstacle found, else returns false*/
-bool FindBlobs(Mat &bm)
-{
-    Mat element(3, 3, CV_8U, cv::Scalar(1));
-
-    Mat displayImage;
-
-    if (_displayBlobs)
-        erode(bm, bm, element);
-
-    IplImage *dispIpl = new IplImage(bm); //create an IplImage from Mat
-
-    //Declare variables
-    CBlobResult blobs;
-    int minArea = 125;
-
-    blobs = CBlobResult(dispIpl, NULL, 0); //get all blobs in the disparity map
-    blobs.Filter(blobs, B_EXCLUDE, CBlobGetArea(), B_LESS, minArea); //filter blobs by area and remove all less than minArea
-
-    //Display blobs
-    IplImage *displayedImage = cvCreateImage(bm.size(), 8, 3); //create image for outputting blobs
-
-    vector<int> meanPixelValues;
-
-    for (int i = 0; i < blobs.GetNumBlobs(); i++)
-    {
-        meanPixelValues.push_back(blobs.GetBlob(i)->Mean(dispIpl));
-    }
-
-    cvReleaseImage(&displayedImage);
-    vector<int>::const_iterator it;
-    if (meanPixelValues.size() > 0)
-    {
-        it = max_element(meanPixelValues.begin(), meanPixelValues.end());
-
-        if (*it >= (16 * 15))
-        {
-            if (_nOfDisparitiesCoefficient <= MAX_NDISPARITY)
-            {
-                _changeNdisparity = true;
-                _ndispInc = true;
-
-                if (_changeDisparityDynamically)
-                    return true;
-                else
-                    return false;
-            }
-        }
-        else if (*it < (16 * 10))
-        {
-
-            if (_nOfDisparitiesCoefficient > MIN_NDISPARITY)
-            {
-                _changeNdisparity = true;
-                _ndispInc = false;
-
-                if (_changeDisparityDynamically)
-                    return true;
-                else
-                    return false;
-            }
-        }
-    }
-    return false;
-}
-
-Mat canvas = Mat(320, 320, CV_32FC3); //for displaying feedback when disparity is changing
-void ChangeDisparityDynamically()
-{
-//
-//    if (_changeNdisparity)
-//    {
-//        if (_ndispInc) //slow down/ increase disparity
-//        {
-//            if (_nOfDisparitiesCoefficient == MAX_NDISPARITY)
-//            {
-//                //Stop car
-//                circle(canvas, Point(160, 160), 100, CV_RGB(255,0,0), -1);
-//                cout << "Stop the car!" << endl;
-//                warnCode = 0;
-//            }
-//            else
-//            {
-//                InitStereoBM(1, FLAGS::INCREMENT);
-//
-//                circle(canvas, Point(160, 160), 100, CV_RGB(255,140,0), -1);
-//                cout << "Slow down!" << endl;
-//                warnCode = 1;
-//            }
-//        }
-//        else if (!_ndispInc)
-//        {
-//            if (_nOfDisparitiesCoefficient > MIN_NDISPARITY)
-//            {
-//                InitStereoBM(1, FLAGS::DECREMENT);
-//
-//                circle(canvas, Point(160, 160), 100, CV_RGB(0,128,0), -1);
-//                cout << "Speed up!" << endl;
-//                warnCode = 2;
-//            }
-//        }
-//        _changeNdisparity = false;
-//    }
-//    else
-//    {
-////        circle(canvas, Point(160, 160), 100, CV_RGB(0,128,0), -1);
-//    }
-//
-//    imshow("canvas", canvas);
-//    waitKey(20);
-
-}
-
 void CarDrivingWorker()
 {
     while (true)
@@ -436,32 +323,22 @@ void ImageAcquisitionWorker()
 
 #pragma omp critical(buffer0)
         {
-
-            cout << _car.speed() << endl;
             if (_buffer0Processed)
             {
+
                 /*Blobs for disparity from image in buffer 0*/
                 if (_disparityBuffer.leftImage.data != NULL)
                 {
-//                    if (_invalidateDispBufLeft)
-//                    {
-//                        _invalidateDispBufLeft = false;
-//                    }
-//                    else if (FindBlobs(_disparityBuffer.leftImage))
-//                    {
-//                        _invalidateDispBufRight = true;
-//                    }
 
-//                    Rect* obj = _stereo.closestObject(_disparityBuffer.leftImage);
-//
-//                    if(obj != NULL)
-//                    {
-////                        imshow("roi", _disparityBuffer.leftImage(*obj));
-////                        waitKey(500);
-//                        Mat roi = _disparityBuffer.leftImage(*obj);
-//                        _stereo.distanceToObject(roi,_Q);
-//                    }
+                    Rect* obj = _stereo.closestObject(_disparityBuffer.leftImage);
 
+                    if(obj != NULL)
+                    {
+                        Mat roi = _disparityBuffer.leftImage(*obj);
+                        imshow("roi", roi);
+                        waitKey(50);
+                        cout << _stereo.getClosestObjectDisparity() << endl;
+                    }
                 }
 
                 GetStereoImages(_buffer0);
@@ -547,10 +424,6 @@ void DisparityCalculationWorker()
 
 #pragma omp critical(buffer1)
         {
-
-            if (_changeDisparityDynamically)
-                ChangeDisparityDynamically();
-
             if (!_buffer1Processed)
             {
                 _disparityBuffer.rightImage = _stereo.disparityMap(_buffer1);
@@ -561,9 +434,6 @@ void DisparityCalculationWorker()
         }
 #pragma omp critical(buffer0)
         {
-            if (_changeDisparityDynamically)
-                ChangeDisparityDynamically();
-
             if (!_buffer0Processed)
             {
                 _disparityBuffer.leftImage = _stereo.disparityMap(_buffer0);

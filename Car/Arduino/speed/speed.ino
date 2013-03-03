@@ -18,7 +18,7 @@ void setup(){
   // enable timer compare interrupt
   TIMSK1 |= (1 << OCIE1A);
   
-  Serial.begin(9600);
+  Serial.begin(57600);
 }
 
 

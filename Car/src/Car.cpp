@@ -3,9 +3,10 @@
 
 #define PORT_inst 13400
 
-Arduino arduino("/dev/ttyACM0", 9600);
+//Arduino arduino("/dev/ttyACM0", 9600);
 Car::Car()
 {
+    cout << "Creating car object." << endl;
     InitialiseConnection();
     InitialiseArray();
 }
@@ -116,26 +117,19 @@ void Car::brake()
     carStatus = FLAGS::STATIONARY;
 }
 
-double Car::speed()
+void Car::autoDrive()
 {
-    char* data;
-    arduino.serialport_write("0");
-    arduino.serialport_read(data);
-
-    int len = 0;
-
-    cout << data[len] << endl;
-
-    while(data[len] != '\r')
-    {
-        len++;
-    }
-    cout << "here5" << endl;
-
-    string str(data, len);
-
-    return atof(str.c_str());
+    drive(1,1);
+    sleep(0.5 * 1000);
+    brake();
 }
+
+//double Car::speed()
+//{
+//    int sp = arduino.get('a');
+//    cout << sp << endl;
+//    return sp;
+//}
 
 FLAGS::CARSTATUS Car::status()
 {

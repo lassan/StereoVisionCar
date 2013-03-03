@@ -7,21 +7,18 @@ CPP_SRCS += \
 ../src/Arduino.cpp \
 ../src/Car.cpp \
 ../src/Stereo.cpp \
-../src/helperfunctions.cpp \
 ../src/main.cpp 
 
 OBJS += \
 ./src/Arduino.o \
 ./src/Car.o \
 ./src/Stereo.o \
-./src/helperfunctions.o \
 ./src/main.o 
 
 CPP_DEPS += \
 ./src/Arduino.d \
 ./src/Car.d \
 ./src/Stereo.d \
-./src/helperfunctions.d \
 ./src/main.d 
 
 

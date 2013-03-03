@@ -8,7 +8,7 @@
 #ifndef CAR_H_
 #define CAR_H_
 
-#include "../header/includeFiles.h"
+#include "includeFiles.h"
 
 class Car
 {
@@ -24,6 +24,7 @@ public:
     void drive(int, int);
     void brake();
     double speed();
+    void autoDrive();
     FLAGS::CARSTATUS status();
 };
 

@@ -3,6 +3,7 @@
 
 Stereo::Stereo(int disp, int SADWindowSize)
 {
+    cout << "Creating Stereo object." << endl;
     Initialise(disp, SADWindowSize);
 }
 
@@ -80,6 +81,7 @@ Rect* Stereo::closestObject(Mat &dispMap)
     if (meanPixelValues.size() > 0)
     {
         it = max_element(meanPixelValues.begin(), meanPixelValues.end());
+        closestObjectDisparity = *it;
 
         objectBoundingBox = boundingBoxes[it - meanPixelValues.begin()]; //copy variable to return (it will go out of scope otherwise)
         return &objectBoundingBox;
@@ -87,6 +89,7 @@ Rect* Stereo::closestObject(Mat &dispMap)
     else
         return NULL;
 }
+
 int Stereo::distanceToObject(Mat& dispMap, Mat& Q)
 {
 //    cout << "Reprojecting" << endl;
@@ -114,3 +117,8 @@ int Stereo::distanceToObject(Mat& dispMap, Mat& Q)
 
 }
 
+/*Must call closestObject() before this*/
+int Stereo::getClosestObjectDisparity()
+{
+    return closestObjectDisparity;
+}

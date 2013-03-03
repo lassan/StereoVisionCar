@@ -9,6 +9,7 @@
 #define MAIN_H_
 
 #include "../header/includeFiles.h"
+#include "../header/main.h"
 
 
 /*Function prototype declarations*/
