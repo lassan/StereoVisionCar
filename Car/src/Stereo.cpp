@@ -5,6 +5,9 @@ Stereo::Stereo(int disp, int SADWindowSize)
 {
     cout << "Creating Stereo object." << endl;
     Initialise(disp, SADWindowSize);
+    maxDisp = 5;
+    minDisp = 3;
+    visual = FLAGS::NEAR;
 }
 
 void Stereo::Initialise(int disp, int SADWindowSize)
@@ -15,17 +18,35 @@ void Stereo::Initialise(int disp, int SADWindowSize)
 
 //If flag is ASOLUTE, set nDisparity to 16 * disp, else increment/decrement
 //current disparity by 16 * disp
-void Stereo::changeParameters(int disp, FLAGS::NUMDISPARITY flag,
-        int _SADWindowSize)
+bool Stereo::changeParameters(int _SADWindowSize)
 {
-    if (flag == FLAGS::INCREMENT)
-        disp = (nDisparity / 16) + disp;
-    else if (flag == FLAGS::DECREMENT)
-        disp = (nDisparity / 16) - disp;
+    if (dispChange == FLAGS::INCREMENT)
+    {
+        Initialise(maxDisp, _SADWindowSize);
+        visual = FLAGS::NEAR;
+        return true;
+    }
+    else if (dispChange == FLAGS::DECREMENT)
+    {
+        Initialise(minDisp, _SADWindowSize);
+        visual = FLAGS::FAR;
+        return true;
+    }
+    else
+        return false;
+}
 
-    if (disp < 1)
-        throw "Disparity can not be set to zero.";
-    Initialise(disp, _SADWindowSize);
+FLAGS::VISUALS Stereo::getVisualInfo()
+{
+    return visual;
+}
+
+bool Stereo::parameterChangeRequired()
+{
+    if (dispChange == FLAGS::INCREMENT || dispChange == FLAGS::DECREMENT)
+        return true;
+    else
+        return false;
 }
 
 Mat Stereo::disparityMap(StereoPair &images)
@@ -50,7 +71,7 @@ Mat Stereo::disparityMap(StereoPair &images)
     return imgDisparity8U;
 }
 
-Rect* Stereo::closestObject(Mat &dispMap)
+bool Stereo::detectObjects(Mat &dispMap)
 {
     Mat element(3, 3, CV_8U, cv::Scalar(1));
 
@@ -60,7 +81,7 @@ Rect* Stereo::closestObject(Mat &dispMap)
 
     //Declare variables
     CBlobResult blobs;
-    int minArea = 125;
+    int minArea = 500;
 
     blobs = CBlobResult(dispIpl, NULL, 0); //get all blobs in the disparity map
     blobs.Filter(blobs, B_EXCLUDE, CBlobGetArea(), B_LESS, minArea); //filter blobs by area and remove all less than minArea
@@ -81,13 +102,20 @@ Rect* Stereo::closestObject(Mat &dispMap)
     if (meanPixelValues.size() > 0)
     {
         it = max_element(meanPixelValues.begin(), meanPixelValues.end());
-        closestObjectDisparity = *it;
-
+        closestObjectVal = *it;
         objectBoundingBox = boundingBoxes[it - meanPixelValues.begin()]; //copy variable to return (it will go out of scope otherwise)
-        return &objectBoundingBox;
+
+        if (closestObjectVal > 240)
+            dispChange = FLAGS::INCREMENT;
+        else if (closestObjectVal < 140)
+            dispChange = FLAGS::DECREMENT;
+        else
+            dispChange = FLAGS::ABSOLUTE;
+
+        return true;
     }
     else
-        return NULL;
+        return false;
 }
 
 int Stereo::distanceToObject(Mat& dispMap, Mat& Q)
@@ -117,8 +145,9 @@ int Stereo::distanceToObject(Mat& dispMap, Mat& Q)
 
 }
 
-/*Must call closestObject() before this*/
-int Stereo::getClosestObjectDisparity()
+/* Must call closestObject() before this *
+ * Returns the average pixel value of object in disparity map*/
+int Stereo::getClosestObjectVal()
 {
-    return closestObjectDisparity;
+    return closestObjectVal;
 }

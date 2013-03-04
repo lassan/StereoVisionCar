@@ -19,9 +19,11 @@ class Car
     struct sockaddr_in servaddr;
     int sockfd;
     FLAGS::CARSTATUS carStatus;
+    FLAGS::CARSTATUS prevStatus;
 public:
     Car();
-    void drive(int, int);
+    void driveSafe(int direction, int speed, int objDistance, FLAGS::VISUALS);
+    void driveUnsafe(int, int);
     void brake();
     double speed();
     void autoDrive();

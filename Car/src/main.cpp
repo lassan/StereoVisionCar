@@ -11,7 +11,7 @@ StereoBM _sbm;
 VideoCapture _leftCamera, _rightCamera;
 vector<Mat> _leftFrames, _rightFrames;
 Mat _leftCameraMap1, _leftCameraMap2, _rightCameraMap1, _rightCameraMap2;
-Rect _imageSegment(0, 40, 320, 160);
+Rect _imageSegment(40, 40, 280, 160);
 
 #define PORT_send 8800
 #define PORT_recv 9900
@@ -86,7 +86,7 @@ void Initialise()
         InitDirectionsFromClient();
     }
     if (_drivingEnabled)
-        _car.drive(0, 0);
+        _car.driveUnsafe(0, 0);
 
     /*Load calibration matrices from file*/
     cout << "Loading camera calibration data" << endl;
@@ -277,8 +277,9 @@ void CarDrivingWorker()
                     cout << "X: " << packetHeader.directionx();
                     cout << "\tY: " << packetHeader.directiony() << endl;
                     if (!_systemOverride)
-                        _car.drive(packetHeader.directionx(),
-                                packetHeader.directiony());
+                        _car.driveSafe(packetHeader.directionx(),
+                                packetHeader.directiony(),
+                                _stereo.getClosestObjectVal(),_stereo.getVisualInfo());
                 }
             }
         }
@@ -329,16 +330,19 @@ void ImageAcquisitionWorker()
                 /*Blobs for disparity from image in buffer 0*/
                 if (_disparityBuffer.leftImage.data != NULL)
                 {
+                    _stereo.detectObjects(_disparityBuffer.leftImage);
 
-                    Rect* obj = _stereo.closestObject(_disparityBuffer.leftImage);
-
-                    if(obj != NULL)
+                    if (_invalidateDispBufLeft)
                     {
-                        Mat roi = _disparityBuffer.leftImage(*obj);
-                        imshow("roi", roi);
-                        waitKey(50);
-                        cout << _stereo.getClosestObjectDisparity() << endl;
+                        _invalidateDispBufLeft = false;
                     }
+                    else if (_stereo.parameterChangeRequired())
+                    {
+                        _invalidateDispBufRight = true;
+                    }
+
+                    imshow("disp", _disparityBuffer.leftImage);
+                    waitKey(20);
                 }
 
                 GetStereoImages(_buffer0);
@@ -359,20 +363,20 @@ void ImageAcquisitionWorker()
                 /*Blobs for disparity from image in buffer 1*/
                 if (_disparityBuffer.rightImage.data != NULL)
                 {
-//                    if (_invalidateDispBufRight)
-//                    {
-//                        _invalidateDispBufRight = false;
-//                    }
-//                    else if (FindBlobs(_disparityBuffer.rightImage))
-//                    {
-//                        _invalidateDispBufLeft = true;
-//                    }
+                    _stereo.detectObjects(_disparityBuffer.rightImage);
 
-//                    Rect* obj = _stereo.closestObject(
-//                            _disparityBuffer.rightImage);
-//                    if (obj != NULL)
-//                    {
-//                    }
+                    if (_invalidateDispBufRight)
+                    {
+                        _invalidateDispBufRight = false;
+                    }
+                    else if (_stereo.parameterChangeRequired())
+                    {
+                        _invalidateDispBufLeft = true;
+                    }
+
+                    imshow("disp", _disparityBuffer.rightImage);
+                    waitKey(20);
+
                 }
 
                 GetStereoImages(_buffer1);
@@ -422,10 +426,14 @@ void DisparityCalculationWorker()
     {
         iterationTime = getTickCount();
 
+//        _car.driveSafe(0, 1, _stereo.getClosestObjectVal(),_stereo.getVisualInfo());
+
 #pragma omp critical(buffer1)
         {
             if (!_buffer1Processed)
             {
+                _stereo.changeParameters();
+
                 _disparityBuffer.rightImage = _stereo.disparityMap(_buffer1);
                 _buffer1Processed = true;
 
@@ -436,6 +444,8 @@ void DisparityCalculationWorker()
         {
             if (!_buffer0Processed)
             {
+                _stereo.changeParameters();
+
                 _disparityBuffer.leftImage = _stereo.disparityMap(_buffer0);
                 _buffer0Processed = true;
 

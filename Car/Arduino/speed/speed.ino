@@ -47,7 +47,7 @@ void serialEvent() {
   {
      Serial.read(); 
   }
-    Serial.println(_speed);
+    Serial.write(_speed);
 }
 
 int readQD(){

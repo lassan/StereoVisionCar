@@ -48,6 +48,9 @@ struct FLAGS {
     enum CLIENTDISPLAY{
         LEFT, RIGHT, BLOBS, DISPARITY
     };
+    enum VISUALS{
+        NEAR, FAR
+    };
 };
 
 #endif /* INCLUDEFILES_H_ */

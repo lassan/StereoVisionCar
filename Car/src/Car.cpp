@@ -3,12 +3,14 @@
 
 #define PORT_inst 13400
 
-//Arduino arduino("/dev/ttyACM0", 9600);
+//Arduino arduino("/dev/ttyACM0", 57600);
 Car::Car()
 {
     cout << "Creating car object." << endl;
     InitialiseConnection();
     InitialiseArray();
+
+    carStatus = FLAGS::MOBILE;
 }
 
 void Car::InitialiseConnection()
@@ -30,8 +32,18 @@ void Car::InitialiseArray()
     for (int i = 1; i < 13; i++)
         _dataPacket[i] = 0x00;
 }
-
-void Car::drive(int direction, int speed)
+void Car::driveSafe(int direction, int speed, int objDistance, FLAGS::VISUALS visual)
+{
+    if(objDistance < 240)
+    {
+        if(visual == FLAGS::FAR)
+                driveUnsafe(direction, speed);
+        else if(carStatus != FLAGS::STATIONARY) brake();
+    }
+    else
+        brake();
+}
+void Car::driveUnsafe(int direction, int speed)
 {
     switch (speed)
     {
@@ -104,32 +116,39 @@ void Car::drive(int direction, int speed)
     }
     sendto(sockfd, _dataPacket, sizeof(_dataPacket), 0,
             (struct sockaddr *) &servaddr, sizeof(servaddr));
+
+    carStatus = FLAGS::MOBILE;
 }
 
 
 void Car::brake()
 {
     _dataPacket[5] = 0x00;
-    _dataPacket[7] = 0x7d;
+    _dataPacket[7] = 0x81;
 
     sendto(sockfd, _dataPacket, sizeof(_dataPacket), 0,
             (struct sockaddr *) &servaddr, sizeof(servaddr));
+
     carStatus = FLAGS::STATIONARY;
+    cout << "Braked." << endl;
 }
 
 void Car::autoDrive()
 {
-    drive(1,1);
-    sleep(0.5 * 1000);
+    driveUnsafe(0,3);
+    cout << "press key" << endl;
+    string dum ;
+    cin >> dum;
     brake();
 }
 
-//double Car::speed()
-//{
-//    int sp = arduino.get('a');
+double Car::speed()
+{
+//    char* buf;
+//    int sp = arduino.serialport_read(buf);
 //    cout << sp << endl;
 //    return sp;
-//}
+}
 
 FLAGS::CARSTATUS Car::status()
 {

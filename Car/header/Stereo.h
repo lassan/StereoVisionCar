@@ -8,14 +8,19 @@ class Stereo
     StereoBM sbm;
     int nDisparity;
     Rect objectBoundingBox;
-    int closestObjectDisparity;
+    int closestObjectVal;
+    FLAGS::NUMDISPARITY dispChange;
+    FLAGS::VISUALS visual;
+    int maxDisp;
+    int minDisp;
 public:
     Stereo(int, int);
-    void changeParameters(int, FLAGS::NUMDISPARITY = FLAGS::ABSOLUTE, int=21);
+    bool changeParameters(int=21);
+    bool parameterChangeRequired();
     Mat disparityMap(StereoPair&);
-    Rect* closestObject(Mat&);
-
-    int getClosestObjectDisparity();
+    bool detectObjects(Mat&);
+    FLAGS::VISUALS getVisualInfo();
+    int getClosestObjectVal();
 
     int distanceToObject(Mat&, Mat&);
 };

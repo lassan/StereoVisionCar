@@ -6,7 +6,7 @@
  */
 #include "../header/Arduino.h"
 
-#define PORT "/dev/ttyACM1"
+#define PORT "/dev/ttyACM0"
 
 //using namespace LibSerial;
 
@@ -120,12 +120,13 @@ int Arduino::serialport_write(const char* str)
 
 int Arduino::serialport_read(char* buf)
 {
-    char b[1];
+    cout << serialport_writebyte((uint8_t) 1) << endl;
+    char b[100];
     int i = 0;
     char until = '\n';
     do
     {
-        int n = read(fda, buf, 1);
+        int n = read(fda, buf, 8);
         if (n == -1)
             return -1;
         if (n == 0)
