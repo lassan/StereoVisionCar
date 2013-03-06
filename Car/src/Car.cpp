@@ -34,14 +34,19 @@ void Car::InitialiseArray()
 }
 void Car::driveSafe(int direction, int speed, int objDistance, FLAGS::VISUALS visual)
 {
-    if(objDistance < 240)
+    if(visual == FLAGS::FAR)
     {
-        if(visual == FLAGS::FAR)
-                driveUnsafe(direction, speed);
-        else if(carStatus != FLAGS::STATIONARY) brake();
-    }
-    else
-        brake();
+        driveUnsafe(direction,speed);
+    } else brake();
+
+//    if(objDistance < 240)
+//    {
+////        if(visual == FLAGS::FAR)
+//                driveUnsafe(direction, speed);
+////        else brake();
+//    }
+//    else
+//        brake();
 }
 void Car::driveUnsafe(int direction, int speed)
 {

@@ -11,7 +11,7 @@ StereoBM _sbm;
 VideoCapture _leftCamera, _rightCamera;
 vector<Mat> _leftFrames, _rightFrames;
 Mat _leftCameraMap1, _leftCameraMap2, _rightCameraMap1, _rightCameraMap2;
-Rect _imageSegment(40, 40, 280, 160);
+Rect _imageSegment(40, 80, 280, 120);
 
 #define PORT_send 8800
 #define PORT_recv 9900
@@ -66,8 +66,6 @@ bool _ndispInc = false;
 /*byte array to send to the car*/
 unsigned char _speed[13];
 bool _carMoving = true;
-
-bool _systemOverride = false; //control if system should take control
 
 Stereo _stereo(MIN_NDISPARITY, 21);
 Car _car;
@@ -276,7 +274,6 @@ void CarDrivingWorker()
                 {
                     cout << "X: " << packetHeader.directionx();
                     cout << "\tY: " << packetHeader.directiony() << endl;
-                    if (!_systemOverride)
                         _car.driveSafe(packetHeader.directionx(),
                                 packetHeader.directiony(),
                                 _stereo.getClosestObjectVal(),_stereo.getVisualInfo());
@@ -322,6 +319,7 @@ void ImageAcquisitionWorker()
     {
         iterationTime = getTickCount();
 
+        cout << "highest: " << _stereo.getClosestObjectVal() << "\tnumber: " << _stereo.getNumObjects() << endl;
 #pragma omp critical(buffer0)
         {
             if (_buffer0Processed)
@@ -341,11 +339,15 @@ void ImageAcquisitionWorker()
                         _invalidateDispBufRight = true;
                     }
 
+
                     imshow("disp", _disparityBuffer.leftImage);
-                    waitKey(20);
+                    waitKey(100);
                 }
 
                 GetStereoImages(_buffer0);
+
+                imshow("img", _buffer0.leftImage);
+                waitKey(5);
 
                 if (_serverEnabled)
                     ClientDisplay(_buffer0, _disparityBuffer.leftImage);
@@ -375,7 +377,7 @@ void ImageAcquisitionWorker()
                     }
 
                     imshow("disp", _disparityBuffer.rightImage);
-                    waitKey(20);
+                    waitKey(100);
 
                 }
 
@@ -432,7 +434,7 @@ void DisparityCalculationWorker()
         {
             if (!_buffer1Processed)
             {
-                _stereo.changeParameters();
+                _stereo.changeParameters(21, _car);
 
                 _disparityBuffer.rightImage = _stereo.disparityMap(_buffer1);
                 _buffer1Processed = true;
@@ -444,7 +446,7 @@ void DisparityCalculationWorker()
         {
             if (!_buffer0Processed)
             {
-                _stereo.changeParameters();
+                _stereo.changeParameters(21, _car);
 
                 _disparityBuffer.leftImage = _stereo.disparityMap(_buffer0);
                 _buffer0Processed = true;
@@ -582,60 +584,55 @@ void SendDataToClient(Mat &image)
 
 void checkForData()
 {
-//    int n = 0;
-//    fd_set input;
-//    struct timeval timeout;
-//
-//    FD_ZERO(&input);
-//    FD_SET(clientsock, &input);
-//
-//    timeout.tv_sec = 0;
-//    timeout.tv_usec = 1;
-//
-//    n = select(clientsock + 1, &input, NULL, NULL, &timeout);
-//    /* start sending images */
-//    if (n < 0) {
-//        perror("select failed");
-//    } else if (n == 0) {
-//
-//    } else if (FD_ISSET(clientsock,&input)) {
-//        char buffer[32];
-//        recv(clientsock, buffer, sizeof(buffer), 0);
-//        tutorial::Packet header;
-//        header.ParseFromArray(buffer, sizeof(buffer));
-//        if (header.has_channel()) {
-//            switch (header.channel()) {
-//            case Channel1:
-//                currentChannel = Channel1;
-//                break;
-//            case Channel2:
-//                currentChannel = Channel2;
-//                break;
-//            default:
-//                break;
-//            }
-//
-//        } else if(header.has_headertype()) {
-//            switch (header.headertype()) {
-//            case Normal:
-//                currentMode = Normal;
-//                break;
-//            case Blob:
-//                currentMode = Blob;
-//                destroyAllWindows();
-//                _displayBlobs = true;
-//                break;
-//            case Disparity:
-//                currentMode = Disparity;
-//                destroyAllWindows();
-//                _displayBlobs = false;
-//                break;
-//            default:
-//                break;
-//            }
-//        } else if(header.has_directionx()){
-//            cout << "X coordinate is : "<< header.directionx() << endl;
-//            cout << "Y coordinate is : "<< header.directiony() << endl;
-//        }
-//    }
+    int n = 0;
+    fd_set input;
+    struct timeval timeout;
+
+    FD_ZERO(&input);
+    FD_SET(clientsock, &input);
+
+    timeout.tv_sec = 0;
+    timeout.tv_usec = 1;
+
+    n = select(clientsock + 1, &input, NULL, NULL, &timeout);
+    /* start sending images */
+    if (n < 0) {
+        perror("select failed");
+    } else if (n == 0) {
+
+    } else if (FD_ISSET(clientsock,&input)) {
+        char buffer[32];
+        recv(clientsock, buffer, sizeof(buffer), 0);
+        tutorial::Packet header;
+        header.ParseFromArray(buffer, sizeof(buffer));
+        if (header.has_channel()) {
+            switch (header.channel()) {
+            case Channel1:
+                currentChannel = Channel1;
+                break;
+            case Channel2:
+                currentChannel = Channel2;
+                break;
+            default:
+                break;
+            }
+
+        } else if(header.has_headertype()) {
+            switch (header.headertype()) {
+            case Normal:
+                clientDisplay = FLAGS::LEFT;
+                break;
+            case Blob:
+                clientDisplay = FLAGS::BLOBS;
+                destroyAllWindows();
+                break;
+            case Disparity:
+                clientDisplay = FLAGS::DISPARITY;
+                destroyAllWindows();
+                break;
+            default:
+                break;
+            }
+        }
+    }
 }

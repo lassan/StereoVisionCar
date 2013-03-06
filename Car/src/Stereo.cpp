@@ -1,5 +1,6 @@
 #include "../header/includeFiles.h"
 #include "../header/Stereo.h"
+#include "../header/Car.h"
 
 Stereo::Stereo(int disp, int SADWindowSize)
 {
@@ -18,12 +19,13 @@ void Stereo::Initialise(int disp, int SADWindowSize)
 
 //If flag is ASOLUTE, set nDisparity to 16 * disp, else increment/decrement
 //current disparity by 16 * disp
-bool Stereo::changeParameters(int _SADWindowSize)
+bool Stereo::changeParameters(int _SADWindowSize, Car &car)
 {
     if (dispChange == FLAGS::INCREMENT)
     {
         Initialise(maxDisp, _SADWindowSize);
         visual = FLAGS::NEAR;
+        car.brake();
         return true;
     }
     else if (dispChange == FLAGS::DECREMENT)
@@ -86,11 +88,13 @@ bool Stereo::detectObjects(Mat &dispMap)
     blobs = CBlobResult(dispIpl, NULL, 0); //get all blobs in the disparity map
     blobs.Filter(blobs, B_EXCLUDE, CBlobGetArea(), B_LESS, minArea); //filter blobs by area and remove all less than minArea
 
+    numObjects = blobs.GetNumBlobs();
+
     CBlob* currentBlob;
     vector<int> meanPixelValues;
     vector<Rect> boundingBoxes;
 
-    for (int i = 0; i < blobs.GetNumBlobs(); i++)
+    for (int i = 0; i < numObjects; i++)
     {
         currentBlob = blobs.GetBlob(i);
         meanPixelValues.push_back(currentBlob->Mean(dispIpl));
@@ -118,31 +122,9 @@ bool Stereo::detectObjects(Mat &dispMap)
         return false;
 }
 
-int Stereo::distanceToObject(Mat& dispMap, Mat& Q)
+int Stereo::getNumObjects()
 {
-//    cout << "Reprojecting" << endl;
-
-    Mat output = Mat(dispMap.size(), CV_32FC3);
-
-    Scalar transform = Q * Scalar(0, 0, 120, 1);
-
-    cout << transform.val[0] << "\t" << transform.val[1] << "\t"
-            << transform.val[2] << "\t" << transform.val[3] << endl;
-
-//    reprojectImageTo3D(dispMap, output, Q);
-
-//    for(int row = 0; row < dispMap.rows; row++)
-//    {
-    for (int col = 0; col < dispMap.cols; col++)
-//        {
-//            cout << (double)output.at<Vec3b>(row,col)[0]
-//                 << "\t" << (double)output.at<Vec3b>(row,col)[1]
-//                 << "\t" << (double)output.at<Vec3b>(row,col)[2]
-//                 << endl;
-//        }
-//    }
-        return 0;
-
+    return numObjects;
 }
 
 /* Must call closestObject() before this *

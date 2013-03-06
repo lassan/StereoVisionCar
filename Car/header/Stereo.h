@@ -1,11 +1,14 @@
 #ifndef STEREO_H_
 #define STEREO_H_
 
+#include "../header/Car.h"
+
 class Stereo
 {
     void Initialise(int, int);
 
     StereoBM sbm;
+
     int nDisparity;
     Rect objectBoundingBox;
     int closestObjectVal;
@@ -13,16 +16,16 @@ class Stereo
     FLAGS::VISUALS visual;
     int maxDisp;
     int minDisp;
+    int numObjects;
 public:
     Stereo(int, int);
-    bool changeParameters(int=21);
+    bool changeParameters(int, Car&);
     bool parameterChangeRequired();
     Mat disparityMap(StereoPair&);
     bool detectObjects(Mat&);
     FLAGS::VISUALS getVisualInfo();
     int getClosestObjectVal();
-
-    int distanceToObject(Mat&, Mat&);
+    int getNumObjects();
 };
 
 #endif /* STEREO_H_ */
