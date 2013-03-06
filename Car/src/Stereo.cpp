@@ -8,6 +8,7 @@ Stereo::Stereo(int disp, int SADWindowSize)
     Initialise(disp, SADWindowSize);
     maxDisp = 5;
     minDisp = 3;
+    numObjects = 3;
     visual = FLAGS::NEAR;
 }
 
@@ -17,8 +18,6 @@ void Stereo::Initialise(int disp, int SADWindowSize)
     sbm = StereoBM(StereoBM::BASIC_PRESET, nDisparity, SADWindowSize);
 }
 
-//If flag is ASOLUTE, set nDisparity to 16 * disp, else increment/decrement
-//current disparity by 16 * disp
 bool Stereo::changeParameters(int _SADWindowSize, Car &car)
 {
     if (dispChange == FLAGS::INCREMENT)
@@ -83,7 +82,7 @@ bool Stereo::detectObjects(Mat &dispMap)
 
     //Declare variables
     CBlobResult blobs;
-    int minArea = 500;
+    int minArea = 250;
 
     blobs = CBlobResult(dispIpl, NULL, 0); //get all blobs in the disparity map
     blobs.Filter(blobs, B_EXCLUDE, CBlobGetArea(), B_LESS, minArea); //filter blobs by area and remove all less than minArea
@@ -107,6 +106,7 @@ bool Stereo::detectObjects(Mat &dispMap)
     {
         it = max_element(meanPixelValues.begin(), meanPixelValues.end());
         closestObjectVal = *it;
+        objArea = currentBlob->Area();
         objectBoundingBox = boundingBoxes[it - meanPixelValues.begin()]; //copy variable to return (it will go out of scope otherwise)
 
         if (closestObjectVal > 240)
@@ -119,7 +119,11 @@ bool Stereo::detectObjects(Mat &dispMap)
         return true;
     }
     else
+    {
+        closestObjectVal = -1;
+        objArea = - 1;
         return false;
+    }
 }
 
 int Stereo::getNumObjects()
@@ -133,3 +137,22 @@ int Stereo::getClosestObjectVal()
 {
     return closestObjectVal;
 }
+
+double Stereo::getClosestObjectArea()
+{
+    return objArea;
+}
+
+//checks if less than 3 objects are present
+// but area is very large, could mean further away landscape, so don't stop
+bool Stereo::texturelessObjectPresent()
+{
+    if(numObjects <= 2 && objArea < 10000)
+    {
+        return true;
+    }
+    else
+        return false;
+}
+
+

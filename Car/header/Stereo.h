@@ -17,6 +17,7 @@ class Stereo
     int maxDisp;
     int minDisp;
     int numObjects;
+    double objArea;
 public:
     Stereo(int, int);
     bool changeParameters(int, Car&);
@@ -26,6 +27,8 @@ public:
     FLAGS::VISUALS getVisualInfo();
     int getClosestObjectVal();
     int getNumObjects();
+    double getClosestObjectArea();
+    bool texturelessObjectPresent();
 };
 
 #endif /* STEREO_H_ */

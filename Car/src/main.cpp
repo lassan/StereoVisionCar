@@ -11,7 +11,7 @@ StereoBM _sbm;
 VideoCapture _leftCamera, _rightCamera;
 vector<Mat> _leftFrames, _rightFrames;
 Mat _leftCameraMap1, _leftCameraMap2, _rightCameraMap1, _rightCameraMap2;
-Rect _imageSegment(40, 80, 280, 120);
+Rect _imageSegment(40, 60, 240, 120);
 
 #define PORT_send 8800
 #define PORT_recv 9900
@@ -65,7 +65,8 @@ bool _ndispInc = false;
 
 /*byte array to send to the car*/
 unsigned char _speed[13];
-bool _carMoving = true;
+
+bool _override = false;
 
 Stereo _stereo(MIN_NDISPARITY, 21);
 Car _car;
@@ -93,10 +94,6 @@ void Initialise()
     /*Open camera streams*/
     cout << "Initialising stereo cameras" << endl;
     InitCameras();
-
-    /*Generate Superimposed images*/
-    //    cout << "Generating superimposed image sample" << endl;
-    //    GenerateSuperImposedImages();
 }
 
 void InitCalibrationData()
@@ -214,6 +211,9 @@ void GetStereoImages(StereoPair &input)
     _leftCamera.retrieve(input.leftImage, 0);
     _rightCamera.retrieve(input.rightImage, 0);
 
+//    _leftCamera.read(input.leftImage);
+//    _rightCamera.read(input.rightImage);
+
     remap(input.leftImage, input.leftImage, _leftCameraMap1, _leftCameraMap2,
             INTER_LINEAR);
     remap(input.rightImage, input.rightImage, _rightCameraMap1,
@@ -225,8 +225,8 @@ void GetStereoImages(StereoPair &input)
     cvtColor(input.leftImage, input.leftImage, CV_RGB2GRAY);
     cvtColor(input.rightImage, input.rightImage, CV_RGB2GRAY);
 
-    blur(input.leftImage, input.leftImage, Size(3, 3));
-    blur(input.rightImage, input.rightImage, Size(3, 3));
+//    blur(input.leftImage, input.leftImage, Size(3, 3));
+//    blur(input.rightImage, input.rightImage, Size(3, 3));
 }
 
 void CarDrivingWorker()
@@ -319,7 +319,10 @@ void ImageAcquisitionWorker()
     {
         iterationTime = getTickCount();
 
-        cout << "highest: " << _stereo.getClosestObjectVal() << "\tnumber: " << _stereo.getNumObjects() << endl;
+        cout << "highest: " << _stereo.getClosestObjectVal()
+                << "\tnumber: " << _stereo.getNumObjects()
+                << "\tarea: " << _stereo.getClosestObjectArea()
+                << endl;
 #pragma omp critical(buffer0)
         {
             if (_buffer0Processed)
@@ -339,9 +342,13 @@ void ImageAcquisitionWorker()
                         _invalidateDispBufRight = true;
                     }
 
-
                     imshow("disp", _disparityBuffer.leftImage);
                     waitKey(100);
+                }
+
+                if(!_override && _stereo.texturelessObjectPresent())
+                {
+                    _car.brake();
                 }
 
                 GetStereoImages(_buffer0);
@@ -379,6 +386,11 @@ void ImageAcquisitionWorker()
                     imshow("disp", _disparityBuffer.rightImage);
                     waitKey(100);
 
+                }
+
+                if(!_override && _stereo.texturelessObjectPresent())
+                {
+                    _car.brake();
                 }
 
                 GetStereoImages(_buffer1);
