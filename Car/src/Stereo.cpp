@@ -9,7 +9,7 @@ Stereo::Stereo(int disp, int SADWindowSize)
     maxDisp = 5;
     minDisp = 3;
     numObjects = 3;
-    visual = FLAGS::NEAR;
+    visual = FLAGS::FAR;
 }
 
 void Stereo::Initialise(int disp, int SADWindowSize)
@@ -143,16 +143,15 @@ double Stereo::getClosestObjectArea()
     return objArea;
 }
 
-//checks if less than 3 objects are present
+//checks if less than 2 objects are present
 // but area is very large, could mean further away landscape, so don't stop
 bool Stereo::texturelessObjectPresent()
 {
-    if(numObjects <= 2 && objArea < 10000)
+    if(numObjects <= 1 && objArea < 10000)
     {
         return true;
     }
     else
         return false;
 }
-
 

@@ -22,7 +22,8 @@ class Car
     FLAGS::CARSTATUS prevStatus;
 public:
     Car();
-    void driveSafe(int direction, int speed, int objDistance, FLAGS::VISUALS);
+
+    void driveSafe(uint8_t instructions[2], FLAGS::VISUALS visual);
     void driveUnsafe(int, int);
     void brake();
     double speed();
