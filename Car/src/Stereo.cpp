@@ -2,6 +2,8 @@
 #include "../header/Stereo.h"
 #include "../header/Car.h"
 
+#define DISPCHANGEMAX 210
+#define DISPCHANGEMIN 110
 Stereo::Stereo(int disp, int SADWindowSize)
 {
     cout << "Creating Stereo object." << endl;
@@ -24,7 +26,6 @@ bool Stereo::changeParameters(int _SADWindowSize, Car &car)
     {
         Initialise(maxDisp, _SADWindowSize);
         visual = FLAGS::NEAR;
-        car.brake();
         return true;
     }
     else if (dispChange == FLAGS::DECREMENT)
@@ -42,6 +43,7 @@ FLAGS::VISUALS Stereo::getVisualInfo()
     return visual;
 }
 
+//To decide whether the disparity buffer needs to be discarded
 bool Stereo::parameterChangeRequired()
 {
     if (dispChange == FLAGS::INCREMENT || dispChange == FLAGS::DECREMENT)
@@ -109,9 +111,9 @@ bool Stereo::detectObjects(Mat &dispMap)
         objArea = currentBlob->Area();
         objectBoundingBox = boundingBoxes[it - meanPixelValues.begin()]; //copy variable to return (it will go out of scope otherwise)
 
-        if (closestObjectVal > 240)
+        if (closestObjectVal > DISPCHANGEMAX)
             dispChange = FLAGS::INCREMENT;
-        else if (closestObjectVal < 140)
+        else if (closestObjectVal < DISPCHANGEMIN)
             dispChange = FLAGS::DECREMENT;
         else
             dispChange = FLAGS::ABSOLUTE;
@@ -159,7 +161,8 @@ bool Stereo::texturelessObjectPresent()
 
 bool Stereo::shouldBrake()
 {
-    if (visual == FLAGS::NEAR || texturelessObjectPresent())
+//  if (visual == FLAGS::NEAR || texturelessObjectPresent())
+  if(visual == FLAGS::NEAR)
     {
         return true;
     }

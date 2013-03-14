@@ -58,7 +58,7 @@ bool _invalidateDispBufRight = false;
 /*control visual output*/
 bool _changeDisparityDynamically = false; //true: display color circle, don't display blobs/disparity
 bool _displayBlobs = true; //true: display blobs; false: display disparity map
-bool _serverEnabled = false; //true: requires client availability
+bool _serverEnabled = true; //true: requires client availability
 bool _drivingEnabled = true;
 
 /*control changing disparity*/
@@ -361,8 +361,6 @@ void ImageAcquisitionWorker()
 //                << "\tarea: " << _stereo.getClosestObjectArea()
 //                << endl;
 
-//		CarDrivingWorker();
-
 #pragma omp critical(buffer0)
         {
             if (_buffer0Processed)
@@ -391,8 +389,8 @@ void ImageAcquisitionWorker()
                 if (_serverEnabled)
                     ClientDisplay(_buffer0, _disparityBuffer.leftImage);
                 else {
-//                    if(_stereo.shouldBrake())
-//                        _car.brake();
+                    if(_stereo.shouldBrake())
+                        _car.brake();
                 }
 
                 _buffer0Processed = false;
@@ -447,7 +445,6 @@ void ImageAcquisitionWorker()
             totalTime = 0;
         }
     }
-
 }
 
 void DisparityCalculationWorker()
@@ -471,7 +468,6 @@ void DisparityCalculationWorker()
     {
         iterationTime = getTickCount();
 
-//        _car.driveSafe(0, 1, _stereo.getClosestObjectVal(),_stereo.getVisualInfo());
 
 #pragma omp critical(buffer1)
         {
@@ -530,35 +526,6 @@ int main()
         }
 
     }
-
-//#pragma omp parallel
-//	{
-//
-//		tid = omp_get_thread_num();
-//
-//		if (tid == 0) {
-////#pragma omp parallel
-////			{
-////#pragma omp sections
-////				{
-////#pragma omp section
-////					{
-//						ImageAcquisitionWorker();
-////
-////					}
-////#pragma omp section
-////					{
-////						//Have thread for driving instructions here
-//////						if (_serverEnabled)
-//////							CarDrivingWorker();
-////					}
-////				}
-////
-//			}
-//		} else if (tid == 1) {
-//			DisparityCalculationWorker();
-//		}
-//	}
     return 0;
 }
 
@@ -616,9 +583,6 @@ void SendDataToClient(Mat &image)
         close(clientsock);
         hasClient = 0;
     }
-
-
-
 //	cvReleaseImage(&(img1));
 }
 
