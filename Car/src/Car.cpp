@@ -35,6 +35,7 @@ void Car::InitialiseArray()
 
 void Car::driveSafe(uint8_t instructions[2], FLAGS::VISUALS visual)
 {
+    cout << instructions [0] << "\t" << instructions[1] << endl;
      if(visual == FLAGS::FAR)
         {
          _dataPacket[5] = instructions[0];
@@ -144,14 +145,6 @@ void Car::autoDrive()
     string dum ;
     cin >> dum;
     brake();
-}
-
-double Car::speed()
-{
-//    char* buf;
-//    int sp = arduino.serialport_read(buf);
-//    cout << sp << endl;
-//    return sp;
 }
 
 FLAGS::CARSTATUS Car::status()

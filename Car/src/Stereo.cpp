@@ -121,7 +121,7 @@ bool Stereo::detectObjects(Mat &dispMap)
     else
     {
         closestObjectVal = -1;
-        objArea = - 1;
+        objArea = -1;
         return false;
     }
 }
@@ -147,11 +147,22 @@ double Stereo::getClosestObjectArea()
 // but area is very large, could mean further away landscape, so don't stop
 bool Stereo::texturelessObjectPresent()
 {
-    if(numObjects <= 1 && objArea < 10000)
+    if (numObjects <= 1 && objArea < 10000)
     {
+        cout << "Textureless Object" << endl;
+
         return true;
     }
     else
         return false;
 }
 
+bool Stereo::shouldBrake()
+{
+    if (visual == FLAGS::NEAR || texturelessObjectPresent())
+    {
+        return true;
+    }
+    else
+        return false;
+}

@@ -29,6 +29,9 @@ public:
     int getNumObjects();
     double getClosestObjectArea();
     bool texturelessObjectPresent();
+
+    bool shouldBrake();
+
 };
 
 #endif /* STEREO_H_ */

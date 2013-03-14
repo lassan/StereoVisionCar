@@ -58,7 +58,7 @@ bool _invalidateDispBufRight = false;
 /*control visual output*/
 bool _changeDisparityDynamically = false; //true: display color circle, don't display blobs/disparity
 bool _displayBlobs = true; //true: display blobs; false: display disparity map
-bool _serverEnabled = true; //true: requires client availability
+bool _serverEnabled = false; //true: requires client availability
 bool _drivingEnabled = true;
 
 /*control changing disparity*/
@@ -73,412 +73,463 @@ bool _override = true;
 Stereo _stereo(MIN_NDISPARITY, 21);
 Car _car;
 
-void Initialise() {
-	/*Set number of threads to 3*/
+void Initialise()
+{
+    /*Set number of threads to 3*/
 //	omp_set_nested(1);
-	omp_set_num_threads(OMPTHREADS);
+    omp_set_num_threads(OMPTHREADS);
 
-	if (_serverEnabled) {
-		cout << "Initialising server. Please start the client" << endl;
-		InitServer();
-		cout << "InitDirectionsFromClient. Please start the client" << endl;
-		InitDirectionsFromClient();
-	}
-	if (_drivingEnabled)
-		_car.driveUnsafe(0, 0);
+    if (_serverEnabled)
+    {
+        cout << "Initialising server. Please start the client" << endl;
+        InitServer();
+//        cout << "InitDirectionsFromClient. Please start the client" << endl;
+//        InitDirectionsFromClient();
+    }
+    if (_drivingEnabled)
+        _car.driveUnsafe(0, 0);
 
-	/*Load calibration matrices from file*/
-	cout << "Loading camera calibration data" << endl;
-	InitCalibrationData();
+    /*Load calibration matrices from file*/
+    cout << "Loading camera calibration data" << endl;
+    InitCalibrationData();
 
-	/*Open camera streams*/
-	cout << "Initialising stereo cameras" << endl;
-	InitCameras();
+    /*Open camera streams*/
+    cout << "Initialising stereo cameras" << endl;
+    InitCameras();
 }
 
-void InitCalibrationData() {
-	string filePath = "CalibrationMatrices320/";
-	LoadMatrixFromFile(filePath, "M1", _M1);
-	LoadMatrixFromFile(filePath, "D1", _D1);
-	LoadMatrixFromFile(filePath, "M2", _M2);
-	LoadMatrixFromFile(filePath, "D2", _D2);
-	LoadMatrixFromFile(filePath, "R1", _R1);
-	LoadMatrixFromFile(filePath, "R2", _R2);
-	LoadMatrixFromFile(filePath, "P1", _P1);
-	LoadMatrixFromFile(filePath, "P2", _P2);
-	LoadMatrixFromFile(filePath, "Q", _Q);
+void InitCalibrationData()
+{
+    string filePath = "CalibrationMatrices320/";
+    LoadMatrixFromFile(filePath, "M1", _M1);
+    LoadMatrixFromFile(filePath, "D1", _D1);
+    LoadMatrixFromFile(filePath, "M2", _M2);
+    LoadMatrixFromFile(filePath, "D2", _D2);
+    LoadMatrixFromFile(filePath, "R1", _R1);
+    LoadMatrixFromFile(filePath, "R2", _R2);
+    LoadMatrixFromFile(filePath, "P1", _P1);
+    LoadMatrixFromFile(filePath, "P2", _P2);
+    LoadMatrixFromFile(filePath, "Q", _Q);
 }
 
-void InitCameras() {
-	/*Create rectification matrices*/
-	initUndistortRectifyMap(_M1, _D1, _R1, _P1, Size(320, 240), CV_16SC2,
-			_leftCameraMap1, _leftCameraMap2);
-	initUndistortRectifyMap(_M2, _D2, _R2, _P2, Size(320, 240), CV_16SC2,
-			_rightCameraMap1, _rightCameraMap2);
+void InitCameras()
+{
+    /*Create rectification matrices*/
+    initUndistortRectifyMap(_M1, _D1, _R1, _P1, Size(320, 240), CV_16SC2,
+            _leftCameraMap1, _leftCameraMap2);
+    initUndistortRectifyMap(_M2, _D2, _R2, _P2, Size(320, 240), CV_16SC2,
+            _rightCameraMap1, _rightCameraMap2);
 
-	_leftCamera.open(1);
-	_rightCamera.open(0);
+    _leftCamera.open(2);
+    _rightCamera.open(1);
 
-	if (_leftCamera.isOpened()) {
-		cout << "Left camera stream opened" << endl;
-	} else {
-		cout << "Left  camera stream failed to open. Terminating" << endl;
-		abort();
-	}
+    if (_leftCamera.isOpened())
+    {
+        cout << "Left camera stream opened" << endl;
+    }
+    else
+    {
+        cout << "Left  camera stream failed to open. Terminating" << endl;
+        abort();
+    }
 
-	if (_rightCamera.isOpened()) {
-		cout << "Right camera stream opened" << endl;
-	} else {
-		cout << "Right camera stream failed to open. Terminating" << endl;
-		abort();
-	}
+    if (_rightCamera.isOpened())
+    {
+        cout << "Right camera stream opened" << endl;
+    }
+    else
+    {
+        cout << "Right camera stream failed to open. Terminating" << endl;
+        abort();
+    }
 
-	_leftCamera.set(CV_CAP_PROP_FRAME_WIDTH, 320);
-	_leftCamera.set(CV_CAP_PROP_FRAME_HEIGHT, 240);
+    _leftCamera.set(CV_CAP_PROP_FRAME_WIDTH, 320);
+    _leftCamera.set(CV_CAP_PROP_FRAME_HEIGHT, 240);
 
-	_rightCamera.set(CV_CAP_PROP_FRAME_WIDTH, 320);
-	_rightCamera.set(CV_CAP_PROP_FRAME_HEIGHT, 240);
+    _rightCamera.set(CV_CAP_PROP_FRAME_WIDTH, 320);
+    _rightCamera.set(CV_CAP_PROP_FRAME_HEIGHT, 240);
 }
 
-void InitDirectionsFromClient() {
+void InitDirectionsFromClient()
+{
 
-	/* open socket */
-	if ((listensock = socket(PF_INET, SOCK_STREAM, 0)) == -1) {
-		cerr << "socket() failed";
-		exit(1);
-	}
+    /* open socket */
+    if ((listensock = socket(PF_INET, SOCK_STREAM, 0)) == -1)
+    {
+        cerr << "socket() failed";
+        exit(1);
+    }
 
-	/* setup server's IP and port */
-	memset(&server, 0, sizeof(server));
-	server.sin_family = AF_INET;
-	server.sin_port = htons(PORT_recv);
-	server.sin_addr.s_addr = INADDR_ANY;
+    /* setup server's IP and port */
+    memset(&server, 0, sizeof(server));
+    server.sin_family = AF_INET;
+    server.sin_port = htons(PORT_recv);
+    server.sin_addr.s_addr = INADDR_ANY;
 
-	/* bind the socket */
-	if (bind(listensock, (const sockaddr*) &server, sizeof(server)) == -1) {
-		cerr << "bind() failed";
-		exit(1);
-	}
+    /* bind the socket */
+    if (bind(listensock, (const sockaddr*) &server, sizeof(server)) == -1)
+    {
+        cerr << "bind() failed";
+        exit(1);
+    }
 
-	/* wait for connection */
-	if (listen(listensock, 2) == -1) {
-	}
+    /* wait for connection */
+    if (listen(listensock, 2) == -1)
+    {
+    }
 
-	/* accept a client */
-	if ((recvsock = accept(listensock, NULL, NULL)) == -1) {
-		cerr << "accept() failed";
-		exit(1);
-	}
+    /* accept a client */
+    if ((recvsock = accept(listensock, NULL, NULL)) == -1)
+    {
+        cerr << "accept() failed";
+        exit(1);
+    }
 
 }
 
-void InitServer() {
-	struct sockaddr_in server;
+void InitServer()
+{
+    struct sockaddr_in server;
 
-	/* open socket */
-	if ((serversock = socket(PF_INET, SOCK_STREAM, 0)) == -1) {
-		cerr << "socket() failed";
-		exit(1);
-	}
+    /* open socket */
+    if ((serversock = socket(PF_INET, SOCK_STREAM, 0)) == -1)
+    {
+        cerr << "socket() failed";
+        exit(1);
+    }
 
-	/* setup server's IP and port */
-	memset(&server, 0, sizeof(server));
-	server.sin_family = AF_INET;
-	server.sin_port = htons(PORT_send);
-	server.sin_addr.s_addr = INADDR_ANY;
+    /* setup server's IP and port */
+    memset(&server, 0, sizeof(server));
+    server.sin_family = AF_INET;
+    server.sin_port = htons(PORT_send);
+    server.sin_addr.s_addr = INADDR_ANY;
 
-	/* bind the socket */
-	if (bind(serversock, (const sockaddr*) &server, sizeof(server)) == -1) {
-		//quit("bind() failed", 1);
-		cerr << "bind() failed";
-		exit(1);
-	}
+    /* bind the socket */
+    if (bind(serversock, (const sockaddr*) &server, sizeof(server)) == -1)
+    {
+        //quit("bind() failed", 1);
+        cerr << "bind() failed";
+        exit(1);
+    }
 
-	/* wait for connection */
-	if (listen(serversock, 2) == -1) {
-	}
+    /* wait for connection */
+    if (listen(serversock, 2) == -1)
+    {
+    }
 
-	/* accept a client */
-	if ((clientsock = accept(serversock, NULL, NULL)) == -1) {
-		cerr << "accept() failed";
-		exit(1);
-	}
+    /* accept a client */
+    if ((clientsock = accept(serversock, NULL, NULL)) == -1)
+    {
+        cerr << "accept() failed";
+        exit(1);
+    }
 
 //	fcntl(clientsock, F_SETFL, O_NONBLOCK);
-	hasClient = 1;
+    hasClient = 1;
 
 }
 
-void GenerateSuperImposedImages() {
-	namedWindow("Overlaid");
+void GenerateSuperImposedImages()
+{
+    namedWindow("Overlaid");
 
-	StereoPair camImages;
+    StereoPair camImages;
 
-	GetStereoImages(camImages);
+    GetStereoImages(camImages);
 
-	imshow("Right image", camImages.rightImage);
-	imshow("Left image", camImages.leftImage);
+    imshow("Right image", camImages.rightImage);
+    imshow("Left image", camImages.leftImage);
 
-	Mat overlay = OverlayImages(camImages, 0.5);
-	imshow("Overlaid", overlay);
+    Mat overlay = OverlayImages(camImages, 0.5);
+    imshow("Overlaid", overlay);
 
-	cout << "Press any key to continue." << endl;
-	waitKey(0);
+    cout << "Press any key to continue." << endl;
+    waitKey(0);
 }
 
-void GetStereoImages(StereoPair &input) {
-	_leftCamera.grab();
-	_rightCamera.grab();
+void GetStereoImages(StereoPair &input)
+{
+    _leftCamera.grab();
+    _rightCamera.grab();
 
-	_leftCamera.retrieve(input.leftImage, 0);
-	_rightCamera.retrieve(input.rightImage, 0);
+    _leftCamera.retrieve(input.leftImage, 0);
+    _rightCamera.retrieve(input.rightImage, 0);
 
 //    _leftCamera.read(input.leftImage);
 //    _rightCamera.read(input.rightImage);
 
-	remap(input.leftImage, input.leftImage, _leftCameraMap1, _leftCameraMap2,
-			INTER_LINEAR);
-	remap(input.rightImage, input.rightImage, _rightCameraMap1,
-			_rightCameraMap2, INTER_LINEAR);
+    remap(input.leftImage, input.leftImage, _leftCameraMap1, _leftCameraMap2,
+            INTER_LINEAR);
+    remap(input.rightImage, input.rightImage, _rightCameraMap1,
+            _rightCameraMap2, INTER_LINEAR);
 
-	input.leftImage = input.leftImage(_imageSegment);
-	input.rightImage = input.rightImage(_imageSegment);
+    input.leftImage = input.leftImage(_imageSegment);
+    input.rightImage = input.rightImage(_imageSegment);
 
-	cvtColor(input.leftImage, input.leftImage, CV_RGB2GRAY);
-	cvtColor(input.rightImage, input.rightImage, CV_RGB2GRAY);
+    cvtColor(input.leftImage, input.leftImage, CV_RGB2GRAY);
+    cvtColor(input.rightImage, input.rightImage, CV_RGB2GRAY);
 
-	blur(input.leftImage, input.leftImage, Size(3, 3));
-	blur(input.rightImage, input.rightImage, Size(3, 3));
+    blur(input.leftImage, input.leftImage, Size(3, 3));
+    blur(input.rightImage, input.rightImage, Size(3, 3));
 }
 
-void CarDrivingWorker() {
-//	while (true) {
+void CarDrivingWorker()
+{
+    bool dataRecieved = false;
 
-//	cout << "Car driving worker" << endl;
-		/* select if data available*/
-		int n;
-		fd_set input, used;
-		struct timeval timeout;
+    while (!dataRecieved)
+    {
+        /* select if data available*/
+        int n;
+        fd_set input, used;
+        struct timeval timeout;
 
-		/* Initialize the input set */
-		FD_ZERO(&input);
-		FD_SET(recvsock, &input);
+        /* Initialize the input set */
+        FD_ZERO(&input);
+        FD_SET(recvsock, &input);
 
-		/* Initialize the timeout structure */
-		timeout.tv_sec = 0;
-		timeout.tv_usec = 1;
+        /* Initialize the timeout structure */
+        timeout.tv_sec = 0;
+        timeout.tv_usec = 1;
 
-		used = input;
+        used = input;
 
-		/* Do the select */
-		n = select(recvsock + 1, &used, NULL, NULL, &timeout);
+        /* Do the select */
+        n = select(recvsock + 1, &used, NULL, NULL, &timeout);
 
-		/* See if there was an error */
-		if (n > 0) {
-			if (FD_ISSET(recvsock, &used)) {
-				uint8_t buffer[2];
-				recv(recvsock, buffer, sizeof(buffer), 0);
-				_car.driveSafe(buffer,_stereo.getVisualInfo());
-			}
-		} else if (n < 0) {
-			perror("select failed");
-		} else {
+        /* See if there was an error */
+        if (n > 0)
+        {
+            if (FD_ISSET(recvsock, &used))
+            {
+                uint8_t buffer[2];
+                recv(recvsock, buffer, sizeof(buffer), 0);
+                _car.driveSafe(buffer, _stereo.getVisualInfo());
+                dataRecieved = true;
+            }
+        }
+        else if (n < 0)
+        {
+            perror("select failed");
+        }
+        else
+        {
 //			puts("TIMEOUT");
-		}
-//	}
+        }
+
+    }
 }
 
-void ClientDisplay(StereoPair &input, Mat &image) {
-	if (hasClient) {
-		switch (clientDisplay) {
-		case FLAGS::LEFT:
-			SendDataToClient(input.leftImage);
-			break;
-		case FLAGS::RIGHT:
-			SendDataToClient(input.rightImage);
-			break;
-		case FLAGS::DISPARITY:
-			SendDataToClient(image);
-			break;
-		default:
-			break;
-		}
-	} else {
-		_car.brake(); //stop the car if there is no client.
-		ListenForClient();
-	}
+void ClientDisplay(StereoPair &input, Mat &image)
+{
+    if (hasClient)
+    {
+        switch (clientDisplay)
+        {
+            case FLAGS::LEFT:
+                SendDataToClient(input.leftImage);
+                break;
+            case FLAGS::RIGHT:
+                SendDataToClient(input.rightImage);
+                break;
+            case FLAGS::DISPARITY:
+                SendDataToClient(image);
+                break;
+            default:
+                break;
+        }
+    }
+    else
+    {
+        _car.brake(); //stop the car if there is no client.
+        ListenForClient();
+    }
 }
 
-void ImageAcquisitionWorker() {
-	int iterationCounter = 0;
-	float iterationTime = 0;
-	float totalTime = 0;
+void ImageAcquisitionWorker()
+{
+    int iterationCounter = 0;
+    float iterationTime = 0;
+    float totalTime = 0;
 
-	while (1) {
-		iterationTime = getTickCount();
+    while (1)
+    {
+        iterationTime = getTickCount();
 
 //        cout << "highest: " << _stereo.getClosestObjectVal()
 //                << "\tnumber: " << _stereo.getNumObjects()
 //                << "\tarea: " << _stereo.getClosestObjectArea()
 //                << endl;
 
-		CarDrivingWorker();
+//		CarDrivingWorker();
 
 #pragma omp critical(buffer0)
-		{
-			if (_buffer0Processed) {
+        {
+            if (_buffer0Processed)
+            {
 
-				/*Blobs for disparity from image in buffer 0*/
-				if (_disparityBuffer.leftImage.data != NULL) {
-					_stereo.detectObjects(_disparityBuffer.leftImage);
+                /*Blobs for disparity from image in buffer 0*/
+                if (_disparityBuffer.leftImage.data != NULL)
+                {
+                    _stereo.detectObjects(_disparityBuffer.leftImage);
 
-					if (_invalidateDispBufLeft) {
-						_invalidateDispBufLeft = false;
-					} else if (_stereo.parameterChangeRequired()) {
-						_invalidateDispBufRight = true;
-					}
+                    if (_invalidateDispBufLeft)
+                    {
+                        _invalidateDispBufLeft = false;
+                    }
+                    else if (_stereo.parameterChangeRequired())
+                    {
+                        _invalidateDispBufRight = true;
+                    }
 
-//					imshow("disp", _disparityBuffer.leftImage);
-//					waitKey(5);
-				}
+					imshow("disp", _disparityBuffer.leftImage);
+					waitKey(5);
+                }
 
-				if (!_override && _stereo.texturelessObjectPresent()) {
-					_car.brake();
-				}
+                GetStereoImages(_buffer0);
 
-				GetStereoImages(_buffer0);
+                if (_serverEnabled)
+                    ClientDisplay(_buffer0, _disparityBuffer.leftImage);
+                else {
+//                    if(_stereo.shouldBrake())
+//                        _car.brake();
+                }
 
-				if (_serverEnabled)
-					ClientDisplay(_buffer0, _disparityBuffer.leftImage);
+                _buffer0Processed = false;
 
-				_buffer0Processed = false;
-
-				iterationCounter++;
-			}
-		}
+                iterationCounter++;
+            }
+        }
 #pragma omp critical(buffer1)
-		{
+        {
 
-			if (_buffer1Processed) {
-				/*Blobs for disparity from image in buffer 1*/
-				if (_disparityBuffer.rightImage.data != NULL) {
-					_stereo.detectObjects(_disparityBuffer.rightImage);
+            if (_buffer1Processed)
+            {
+                /*Blobs for disparity from image in buffer 1*/
+                if (_disparityBuffer.rightImage.data != NULL)
+                {
+                    _stereo.detectObjects(_disparityBuffer.rightImage);
 
-					if (_invalidateDispBufRight) {
-						_invalidateDispBufRight = false;
-					} else if (_stereo.parameterChangeRequired()) {
-						_invalidateDispBufLeft = true;
-					}
+                    if (_invalidateDispBufRight)
+                    {
+                        _invalidateDispBufRight = false;
+                    }
+                    else if (_stereo.parameterChangeRequired())
+                    {
+                        _invalidateDispBufLeft = true;
+                    }
 
-//					imshow("disp", _disparityBuffer.rightImage);
-//					waitKey(5);
+					imshow("disp", _disparityBuffer.rightImage);
+					waitKey(5);
 
-				}
+                }
 
-				if (!_override && _stereo.texturelessObjectPresent()) {
-					_car.brake();
-				}
+                GetStereoImages(_buffer1);
 
-				GetStereoImages(_buffer1);
+                if (_serverEnabled)
+                    ClientDisplay(_buffer1, _disparityBuffer.rightImage);
 
-				if (_serverEnabled)
-					ClientDisplay(_buffer1, _disparityBuffer.rightImage);
+                _buffer1Processed = false;
 
-				_buffer1Processed = false;
+                iterationCounter++;
+            }
+        }
 
-				iterationCounter++;
-			}
-		}
+        _buffersFull = true;
 
-		_buffersFull = true;
-
-		iterationTime = (getTickCount() - iterationTime) * 0.000000001;
-		totalTime += iterationTime;
-		if (iterationCounter >= MAX_TIMING_ITERATIONS) {
-			cout << "Image acquisition and preparation (fps): "
-					<< (iterationCounter * 2) / totalTime << endl;
-			iterationCounter = 0;
-			totalTime = 0;
-		}
-	}
+        iterationTime = (getTickCount() - iterationTime) * 0.000000001;
+        totalTime += iterationTime;
+        if (iterationCounter >= MAX_TIMING_ITERATIONS)
+        {
+            cout << "Image acquisition and preparation (fps): "
+                    << (iterationCounter * 2) / totalTime << endl;
+            iterationCounter = 0;
+            totalTime = 0;
+        }
+    }
 
 }
 
-void DisparityCalculationWorker() {
-	int iterationCounter = 0;
-	float iterationTime = 0;
-	float totalTime = 0;
+void DisparityCalculationWorker()
+{
+    int iterationCounter = 0;
+    float iterationTime = 0;
+    float totalTime = 0;
 
-	/*Print reassuring message*/
-	cout << "Waiting for buffers to fill.";
-	while (!_buffersFull) {
-		float tempTime = getTickCount();
-		tempTime = (getTickCount() - tempTime) * 0.000000001;
-		if (tempTime > 0.01)
-			cout << ".";
-	}
-	cout << endl << "Buffers full. Commencing processing" << endl;
+    /*Print reassuring message*/
+    cout << "Waiting for buffers to fill.";
+    while (!_buffersFull)
+    {
+        float tempTime = getTickCount();
+        tempTime = (getTickCount() - tempTime) * 0.000000001;
+        if (tempTime > 0.01)
+            cout << ".";
+    }
+    cout << endl << "Buffers full. Commencing processing" << endl;
 
-	while (true) {
-		iterationTime = getTickCount();
+    while (true)
+    {
+        iterationTime = getTickCount();
 
 //        _car.driveSafe(0, 1, _stereo.getClosestObjectVal(),_stereo.getVisualInfo());
 
 #pragma omp critical(buffer1)
-		{
-			if (!_buffer1Processed) {
-				_stereo.changeParameters(21, _car);
+        {
+            if (!_buffer1Processed)
+            {
+                _stereo.changeParameters(21, _car);
 
-				_disparityBuffer.rightImage = _stereo.disparityMap(_buffer1);
-				_buffer1Processed = true;
+                _disparityBuffer.rightImage = _stereo.disparityMap(_buffer1);
+                _buffer1Processed = true;
 
-				iterationCounter++;
-			}
-		}
+                iterationCounter++;
+            }
+        }
 #pragma omp critical(buffer0)
-		{
-			if (!_buffer0Processed) {
-				_stereo.changeParameters(21, _car);
+        {
+            if (!_buffer0Processed)
+            {
+                _stereo.changeParameters(21, _car);
 
-				_disparityBuffer.leftImage = _stereo.disparityMap(_buffer0);
-				_buffer0Processed = true;
+                _disparityBuffer.leftImage = _stereo.disparityMap(_buffer0);
+                _buffer0Processed = true;
 
-				iterationCounter++;
-			}
-		}
+                iterationCounter++;
+            }
+        }
 
-		iterationTime = (getTickCount() - iterationTime) * 0.000000001;
-		totalTime += iterationTime;
-		if (iterationCounter >= MAX_TIMING_ITERATIONS) {
-			cout << "Image processing (fps): "
-					<< (iterationCounter * 2) / totalTime << endl;
-			iterationCounter = 0;
-			totalTime = 0;
-		}
-	}
+        iterationTime = (getTickCount() - iterationTime) * 0.000000001;
+        totalTime += iterationTime;
+        if (iterationCounter >= MAX_TIMING_ITERATIONS)
+        {
+            cout << "Image processing (fps): "
+                    << (iterationCounter * 2) / totalTime << endl;
+            iterationCounter = 0;
+            totalTime = 0;
+        }
+    }
 }
 
-int main() {
-	Initialise();
+int main()
+{
+    Initialise();
 //    destroyAllWindows();
 
-	int tid;
-
 #pragma omp parallel
-	{
+    {
 #pragma omp sections
-		{
-#pragma omp secion
-			{
-				ImageAcquisitionWorker();
-			}
+        {
 #pragma omp section
-			{
-				DisparityCalculationWorker();
-			}
-		}
+            {
+                ImageAcquisitionWorker();
+            }
+#pragma omp section
+            {
+                DisparityCalculationWorker();
+            }
+        }
 
-	}
+    }
 
 //#pragma omp parallel
 //	{
@@ -508,39 +559,71 @@ int main() {
 //			DisparityCalculationWorker();
 //		}
 //	}
-	return 0;
+    return 0;
 }
 
-void ListenForClient() {
-	/* wait for connection */
-	if (listen(serversock, 2) == -1) {
-	}
+void ListenForClient()
+{
+    /* wait for connection */
+    if (listen(serversock, 2) == -1)
+    {
+    }
 
-	/* accept a client */
-	if ((clientsock = accept(serversock, NULL, NULL)) == -1) {
-		cerr << "accept() failed";
-		exit(1);
-	}
-	hasClient = 1;
+    /* accept a client */
+    if ((clientsock = accept(serversock, NULL, NULL)) == -1)
+    {
+        cerr << "accept() failed";
+        exit(1);
+    }
+    hasClient = 1;
 }
 
-void SendDataToClient(Mat &image) {
-	IplImage *img1 = new IplImage(image);
+void SendDataToClient(Mat &image)
+{
+    uint8_t brake[1];
+    int bytes = 0;
 
-	int bytes = 0;
+    if(_stereo.shouldBrake())
+    {
+        _car.brake();
+        brake[0] = 0x01;
+        bytes = send(clientsock, brake, sizeof(brake),0);
+    } else
+    {
+        brake[0] = 0x00;
+        bytes = send(clientsock, brake, sizeof(brake),0);
+    }
 
-	bytes = send(clientsock, img1->imageData, img1->imageSize, 0);
+    if (bytes != sizeof(brake))
+    {
+        _car.brake(); //stop the car if connection closes
+        fprintf(stderr, "Connection closed 1.\n");
+        close(clientsock);
+        hasClient = 0;
+    }
 
-	/* if something went wrong, restart the connection */
-	if (bytes != img1->imageSize) {
-		fprintf(stderr, "Connection closed.\n");
-		close(clientsock);
-		hasClient = 0;
-	}
+
+    IplImage *img1 = new IplImage(image);
+
+
+    bytes = send(clientsock, img1->imageData, img1->imageSize, 0);
+
+    /* if something went wrong, restart the connection */
+    if (bytes != img1->imageSize)
+    {
+        _car.brake(); //stop the car if connection closes
+        fprintf(stderr, "Connection closed 2.\n");
+        close(clientsock);
+        hasClient = 0;
+    }
+
+
+
 //	cvReleaseImage(&(img1));
 }
 
-void checkForData() {
+void checkForData()
+{
 //	int n = 0;
 //	fd_set input;
 //	struct timeval timeout;
