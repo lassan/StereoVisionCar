@@ -6,6 +6,7 @@
 #include "../header/main.h"
 #include <sys/unistd.h>
 #include <sys/fcntl.h>
+#include <stdlib.h>
 
 Mat _M1, _D1, _M2, _D2, _R1, _R2, _P1, _P2, _Q;
 
@@ -40,6 +41,7 @@ bool _displayBlobs = true; //true: display blobs; false: display disparity map
 bool _serverEnabled = true; //true: requires client availability
 bool _drivingEnabled = true;
 
+string _messageToSend = "";
 bool _override = true;
 
 Server _server;
@@ -163,6 +165,8 @@ void ImageAcquisitionWorker()
     float iterationTime = 0;
     float totalTime = 0;
 
+    double frameTime = 0;
+
     while (1)
     {
         iterationTime = getTickCount();
@@ -176,6 +180,8 @@ void ImageAcquisitionWorker()
         {
             if (_buffer0Processed)
             {
+                frameTime = getTickCount();
+
 
                 /*Blobs for disparity from image in buffer 0*/
                 if (_disparityBuffer.leftImage.data != NULL)
@@ -197,13 +203,12 @@ void ImageAcquisitionWorker()
 
                 GetStereoImages(_buffer0);
 
+
+                frameTime = (getTickCount() - frameTime)/getTickFrequency();
+
+                _messageToSend = intToString(1/frameTime);
                 if (_serverEnabled)
-                    _server.sendData(_buffer0, _disparityBuffer.leftImage,_stereo.shouldBrake(),_car);
-                else
-                {
-                    if (_stereo.shouldBrake())
-                        _car.brake();
-                }
+                    _server.sendData(_buffer0, _disparityBuffer.leftImage,_stereo.shouldBrake(),_car, _messageToSend);
 
                 _buffer0Processed = false;
 
@@ -215,6 +220,9 @@ void ImageAcquisitionWorker()
 
             if (_buffer1Processed)
             {
+
+                frameTime = getTickCount();
+
                 /*Blobs for disparity from image in buffer 1*/
                 if (_disparityBuffer.rightImage.data != NULL)
                 {
@@ -236,8 +244,13 @@ void ImageAcquisitionWorker()
 
                 GetStereoImages(_buffer1);
 
+
+                frameTime = (getTickCount() - frameTime)/getTickFrequency();
+
+
+                _messageToSend = intToString(1/frameTime);
                 if (_serverEnabled)
-                    _server.sendData(_buffer0, _disparityBuffer.leftImage,_stereo.shouldBrake(),_car);
+                    _server.sendData(_buffer0, _disparityBuffer.leftImage,_stereo.shouldBrake(),_car, _messageToSend);
 
                 _buffer1Processed = false;
 
@@ -278,7 +291,6 @@ void DisparityCalculationWorker()
 
     while (true)
     {
-        iterationTime = getTickCount();
 
 #pragma omp critical(buffer1)
         {
@@ -288,8 +300,6 @@ void DisparityCalculationWorker()
 
                 _disparityBuffer.rightImage = _stereo.disparityMap(_buffer1);
                 _buffer1Processed = true;
-
-                iterationCounter++;
             }
         }
 #pragma omp critical(buffer0)
@@ -300,19 +310,7 @@ void DisparityCalculationWorker()
 
                 _disparityBuffer.leftImage = _stereo.disparityMap(_buffer0);
                 _buffer0Processed = true;
-
-                iterationCounter++;
             }
-        }
-
-        iterationTime = (getTickCount() - iterationTime) * 0.000000001;
-        totalTime += iterationTime;
-        if (iterationCounter >= MAX_TIMING_ITERATIONS)
-        {
-            cout << "Image processing (fps): "
-                    << (iterationCounter * 2) / totalTime << endl;
-            iterationCounter = 0;
-            totalTime = 0;
         }
     }
 }
