@@ -38,7 +38,7 @@ bool _invalidateDispBufRight = false;
 /*control visual output*/
 bool _changeDisparityDynamically = false; //true: display color circle, don't display blobs/disparity
 bool _displayBlobs = true; //true: display blobs; false: display disparity map
-bool _serverEnabled = true; //true: requires client availability
+bool _serverEnabled = false; //true: requires client availability
 bool _drivingEnabled = true;
 
 string _messageToSend = "";
@@ -204,7 +204,7 @@ void ImageAcquisitionWorker()
                 GetStereoImages(_buffer0);
 
 
-                frameTime = (getTickCount() - frameTime)/getTickFrequency();
+                frameTime = 2* ((getTickCount() - frameTime)/getTickFrequency());
 
                 _messageToSend = intToString(1/frameTime);
                 if (_serverEnabled)
@@ -245,7 +245,7 @@ void ImageAcquisitionWorker()
                 GetStereoImages(_buffer1);
 
 
-                frameTime = (getTickCount() - frameTime)/getTickFrequency();
+                frameTime = 2 * ((getTickCount() - frameTime)/getTickFrequency());
 
 
                 _messageToSend = intToString(1/frameTime);
@@ -274,10 +274,6 @@ void ImageAcquisitionWorker()
 
 void DisparityCalculationWorker()
 {
-    int iterationCounter = 0;
-    float iterationTime = 0;
-    float totalTime = 0;
-
     /*Print reassuring message*/
     cout << "Waiting for buffers to fill.";
     while (!_buffersFull)
