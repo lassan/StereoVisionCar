@@ -19,7 +19,7 @@ class Stereo
     int numObjects;
     double objArea;
 public:
-    Stereo(int, int);
+    Stereo(int);
     bool changeParameters(int, Car&);
     bool parameterChangeRequired();
     Mat disparityMap(StereoPair&);

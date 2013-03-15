@@ -1,5 +1,6 @@
 #include "../header/includeFiles.h"
 #include "../header/helperfunctions.h"
+#include "../header/Server.h"
 #include "../header/Stereo.h"
 #include "../header/Car.h"
 #include "../header/main.h"
@@ -15,30 +16,8 @@ vector<Mat> _leftFrames, _rightFrames;
 Mat _leftCameraMap1, _leftCameraMap2, _rightCameraMap1, _rightCameraMap2;
 Rect _imageSegment(40, 60, 240, 120);
 
-#define PORT_send 8800
-#define PORT_recv 9900
-#define Channel1 0
-#define Channel2 1
-#define Normal 0
-#define Blob 1
-#define Disparity 2
-int is_data_ready = 0;
-int serversock, clientsock;
-int hasClient = 0;
-
-int sockfd, recvsock, listensock;
-struct sockaddr_in servaddr;
-struct sockaddr_in server;
-FLAGS::CLIENTDISPLAY clientDisplay = FLAGS::LEFT;
 /*Variables for timing*/
 int MAX_TIMING_ITERATIONS = 50;
-
-int currentChannel = 0;
-int currentMode = 0;
-int warnCode = 2;
-
-#define MIN_NDISPARITY 3
-#define MAX_NDISPARITY 8
 
 #define OMPTHREADS 2
 
@@ -61,33 +40,20 @@ bool _displayBlobs = true; //true: display blobs; false: display disparity map
 bool _serverEnabled = true; //true: requires client availability
 bool _drivingEnabled = true;
 
-/*control changing disparity*/
-bool _changeNdisparity = false;
-bool _ndispInc = false;
-
-/*byte array to send to the car*/
-unsigned char _speed[13];
-
 bool _override = true;
 
-Stereo _stereo(MIN_NDISPARITY, 21);
+Server _server;
+Stereo _stereo(21);
 Car _car;
 
 void Initialise()
 {
-    /*Set number of threads to 3*/
-//	omp_set_nested(1);
     omp_set_num_threads(OMPTHREADS);
 
     if (_serverEnabled)
     {
-        cout << "Initialising server. Please start the client" << endl;
-        InitServer();
-//        cout << "InitDirectionsFromClient. Please start the client" << endl;
-//        InitDirectionsFromClient();
+        _server.initialise();
     }
-    if (_drivingEnabled)
-        _car.driveUnsafe(0, 0);
 
     /*Load calibration matrices from file*/
     cout << "Loading camera calibration data" << endl;
@@ -150,85 +116,6 @@ void InitCameras()
     _rightCamera.set(CV_CAP_PROP_FRAME_HEIGHT, 240);
 }
 
-void InitDirectionsFromClient()
-{
-
-    /* open socket */
-    if ((listensock = socket(PF_INET, SOCK_STREAM, 0)) == -1)
-    {
-        cerr << "socket() failed";
-        exit(1);
-    }
-
-    /* setup server's IP and port */
-    memset(&server, 0, sizeof(server));
-    server.sin_family = AF_INET;
-    server.sin_port = htons(PORT_recv);
-    server.sin_addr.s_addr = INADDR_ANY;
-
-    /* bind the socket */
-    if (bind(listensock, (const sockaddr*) &server, sizeof(server)) == -1)
-    {
-        cerr << "bind() failed";
-        exit(1);
-    }
-
-    /* wait for connection */
-    if (listen(listensock, 2) == -1)
-    {
-    }
-
-    /* accept a client */
-    if ((recvsock = accept(listensock, NULL, NULL)) == -1)
-    {
-        cerr << "accept() failed";
-        exit(1);
-    }
-
-}
-
-void InitServer()
-{
-    struct sockaddr_in server;
-
-    /* open socket */
-    if ((serversock = socket(PF_INET, SOCK_STREAM, 0)) == -1)
-    {
-        cerr << "socket() failed";
-        exit(1);
-    }
-
-    /* setup server's IP and port */
-    memset(&server, 0, sizeof(server));
-    server.sin_family = AF_INET;
-    server.sin_port = htons(PORT_send);
-    server.sin_addr.s_addr = INADDR_ANY;
-
-    /* bind the socket */
-    if (bind(serversock, (const sockaddr*) &server, sizeof(server)) == -1)
-    {
-        //quit("bind() failed", 1);
-        cerr << "bind() failed";
-        exit(1);
-    }
-
-    /* wait for connection */
-    if (listen(serversock, 2) == -1)
-    {
-    }
-
-    /* accept a client */
-    if ((clientsock = accept(serversock, NULL, NULL)) == -1)
-    {
-        cerr << "accept() failed";
-        exit(1);
-    }
-
-//	fcntl(clientsock, F_SETFL, O_NONBLOCK);
-    hasClient = 1;
-
-}
-
 void GenerateSuperImposedImages()
 {
     namedWindow("Overlaid");
@@ -255,9 +142,6 @@ void GetStereoImages(StereoPair &input)
     _leftCamera.retrieve(input.leftImage, 0);
     _rightCamera.retrieve(input.rightImage, 0);
 
-//    _leftCamera.read(input.leftImage);
-//    _rightCamera.read(input.rightImage);
-
     remap(input.leftImage, input.leftImage, _leftCameraMap1, _leftCameraMap2,
             INTER_LINEAR);
     remap(input.rightImage, input.rightImage, _rightCameraMap1,
@@ -271,79 +155,6 @@ void GetStereoImages(StereoPair &input)
 
     blur(input.leftImage, input.leftImage, Size(3, 3));
     blur(input.rightImage, input.rightImage, Size(3, 3));
-}
-
-void CarDrivingWorker()
-{
-    bool dataRecieved = false;
-
-    while (!dataRecieved)
-    {
-        /* select if data available*/
-        int n;
-        fd_set input, used;
-        struct timeval timeout;
-
-        /* Initialize the input set */
-        FD_ZERO(&input);
-        FD_SET(recvsock, &input);
-
-        /* Initialize the timeout structure */
-        timeout.tv_sec = 0;
-        timeout.tv_usec = 1;
-
-        used = input;
-
-        /* Do the select */
-        n = select(recvsock + 1, &used, NULL, NULL, &timeout);
-
-        /* See if there was an error */
-        if (n > 0)
-        {
-            if (FD_ISSET(recvsock, &used))
-            {
-                uint8_t buffer[2];
-                recv(recvsock, buffer, sizeof(buffer), 0);
-                _car.driveSafe(buffer, _stereo.getVisualInfo());
-                dataRecieved = true;
-            }
-        }
-        else if (n < 0)
-        {
-            perror("select failed");
-        }
-        else
-        {
-//			puts("TIMEOUT");
-        }
-
-    }
-}
-
-void ClientDisplay(StereoPair &input, Mat &image)
-{
-    if (hasClient)
-    {
-        switch (clientDisplay)
-        {
-            case FLAGS::LEFT:
-                SendDataToClient(input.leftImage);
-                break;
-            case FLAGS::RIGHT:
-                SendDataToClient(input.rightImage);
-                break;
-            case FLAGS::DISPARITY:
-                SendDataToClient(image);
-                break;
-            default:
-                break;
-        }
-    }
-    else
-    {
-        _car.brake(); //stop the car if there is no client.
-        ListenForClient();
-    }
 }
 
 void ImageAcquisitionWorker()
@@ -379,17 +190,18 @@ void ImageAcquisitionWorker()
                     {
                         _invalidateDispBufRight = true;
                     }
-
-					imshow("disp", _disparityBuffer.leftImage);
-					waitKey(5);
+//
+//                    imshow("disp", _disparityBuffer.leftImage);
+//                    waitKey(5);
                 }
 
                 GetStereoImages(_buffer0);
 
                 if (_serverEnabled)
-                    ClientDisplay(_buffer0, _disparityBuffer.leftImage);
-                else {
-                    if(_stereo.shouldBrake())
+                    _server.sendData(_buffer0, _disparityBuffer.leftImage,_stereo.shouldBrake(),_car);
+                else
+                {
+                    if (_stereo.shouldBrake())
                         _car.brake();
                 }
 
@@ -417,15 +229,15 @@ void ImageAcquisitionWorker()
                         _invalidateDispBufLeft = true;
                     }
 
-					imshow("disp", _disparityBuffer.rightImage);
-					waitKey(5);
+//                    imshow("disp", _disparityBuffer.rightImage);
+//                    waitKey(5);
 
                 }
 
                 GetStereoImages(_buffer1);
 
                 if (_serverEnabled)
-                    ClientDisplay(_buffer1, _disparityBuffer.rightImage);
+                    _server.sendData(_buffer0, _disparityBuffer.leftImage,_stereo.shouldBrake(),_car);
 
                 _buffer1Processed = false;
 
@@ -467,7 +279,6 @@ void DisparityCalculationWorker()
     while (true)
     {
         iterationTime = getTickCount();
-
 
 #pragma omp critical(buffer1)
         {
@@ -529,114 +340,3 @@ int main()
     return 0;
 }
 
-void ListenForClient()
-{
-    /* wait for connection */
-    if (listen(serversock, 2) == -1)
-    {
-    }
-
-    /* accept a client */
-    if ((clientsock = accept(serversock, NULL, NULL)) == -1)
-    {
-        cerr << "accept() failed";
-        exit(1);
-    }
-    hasClient = 1;
-}
-
-void SendDataToClient(Mat &image)
-{
-    uint8_t brake[1];
-    int bytes = 0;
-
-    if(_stereo.shouldBrake())
-    {
-        _car.brake();
-        brake[0] = 0x01;
-        bytes = send(clientsock, brake, sizeof(brake),0);
-    } else
-    {
-        brake[0] = 0x00;
-        bytes = send(clientsock, brake, sizeof(brake),0);
-    }
-
-    if (bytes != sizeof(brake))
-    {
-        _car.brake(); //stop the car if connection closes
-        fprintf(stderr, "Connection closed 1.\n");
-        close(clientsock);
-        hasClient = 0;
-    }
-
-
-    IplImage *img1 = new IplImage(image);
-
-
-    bytes = send(clientsock, img1->imageData, img1->imageSize, 0);
-
-    /* if something went wrong, restart the connection */
-    if (bytes != img1->imageSize)
-    {
-        _car.brake(); //stop the car if connection closes
-        fprintf(stderr, "Connection closed 2.\n");
-        close(clientsock);
-        hasClient = 0;
-    }
-//	cvReleaseImage(&(img1));
-}
-
-void checkForData()
-{
-//	int n = 0;
-//	fd_set input;
-//	struct timeval timeout;
-//
-//	FD_ZERO(&input);
-//	FD_SET(clientsock, &input);
-//
-//	timeout.tv_sec = 0;
-//	timeout.tv_usec = 1;
-//
-//	n = select(clientsock + 1, &input, NULL, NULL, &timeout);
-//	/* start sending images */
-//	if (n < 0) {
-//		perror("select failed");
-//	} else if (n == 0) {
-//
-//	} else if (FD_ISSET(clientsock,&input)) {
-//		char buffer[32];
-//		recv(clientsock, buffer, sizeof(buffer), 0);
-//		tutorial::Packet header;
-//		header.ParseFromArray(buffer, sizeof(buffer));
-//		if (header.has_channel()) {
-//			switch (header.channel()) {
-//			case Channel1:
-//				currentChannel = Channel1;
-//				break;
-//			case Channel2:
-//				currentChannel = Channel2;
-//				break;
-//			default:
-//				break;
-//			}
-//
-//		} else if (header.has_headertype()) {
-//			switch (header.headertype()) {
-//			case Normal:
-//				clientDisplay = FLAGS::LEFT;
-//				break;
-//			case Blob:
-//				clientDisplay = FLAGS::BLOBS;
-//				destroyAllWindows();
-//				break;
-//			case Disparity:
-//				clientDisplay = FLAGS::DISPARITY;
-//				destroyAllWindows();
-//				break;
-//			default:
-//				break;
-//			}
-//		}
-//	}
-}

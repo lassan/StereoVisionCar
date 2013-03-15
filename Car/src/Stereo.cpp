@@ -2,16 +2,18 @@
 #include "../header/Stereo.h"
 #include "../header/Car.h"
 
-#define DISPCHANGEMAX 210
-#define DISPCHANGEMIN 110
-Stereo::Stereo(int disp, int SADWindowSize)
+#define DISPCHANGEMAX 240
+#define DISPCHANGEMIN 160
+
+Stereo::Stereo(int SADWindowSize)
 {
     cout << "Creating Stereo object." << endl;
-    Initialise(disp, SADWindowSize);
     maxDisp = 5;
     minDisp = 3;
     numObjects = 3;
     visual = FLAGS::FAR;
+
+    Initialise(minDisp, SADWindowSize);
 }
 
 void Stereo::Initialise(int disp, int SADWindowSize)

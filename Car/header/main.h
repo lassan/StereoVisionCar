@@ -16,29 +16,11 @@
 void Initialise();
 void InitCalibrationData();
 void InitCameras();
-void InitServer();
-void InitDirectionsFromClient();
-void InitCarConnection();
-void InitDrivingArray();
-
-void CarDrivingWorker();
-void SendInstructionsToCar(int dir_x, int dir_y);
-void StopTheCar();
-
-void SendDataToClient(Mat& image);
-void checkForData();
-
-void ClientDisplay(StereoPair &input, Mat &image);
-
 
 void GetStereoImages(StereoPair &input);
 void GenerateSuperImposedImages();
 
-Mat CalculateDisparityBM(StereoPair &images);
-bool FindBlobs(Mat &bm);
 void ChangeDisparityDynamically();
-void ListenForClient();
-void SendInstructions();
 
 void ImageAcquisitionWorker();
 void DisparityCalculationWorker();

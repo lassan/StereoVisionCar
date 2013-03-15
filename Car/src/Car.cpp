@@ -35,7 +35,6 @@ void Car::InitialiseArray()
 
 void Car::driveSafe(uint8_t instructions[2], FLAGS::VISUALS visual)
 {
-    cout << instructions [0] << "\t" << instructions[1] << endl;
      if(visual == FLAGS::FAR)
         {
          _dataPacket[5] = instructions[0];
@@ -56,16 +55,16 @@ void Car::driveUnsafe(int direction, int speed)
     case 0: //0
         _dataPacket[5] = 0x81;
         break;
-    case 1: //1
+    case 1: //3
         _dataPacket[5] = 0x84;
         break;
-    case 2: //2
+    case 2: //4
         _dataPacket[5] = 0x85;
         break;
-    case 3: //3
+    case 3: //5
         _dataPacket[5] = 0x86;
         break;
-    case 4: //4
+    case 4: //6
         _dataPacket[5] = 0x87;
         break;
     case -1: //-1
