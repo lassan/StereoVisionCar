@@ -18,7 +18,7 @@ void setup(){
   // enable timer compare interrupt
   TIMSK1 |= (1 << OCIE1A);
   
-  Serial.begin(57600);
+  Serial.begin(9600);
 }
 
 
@@ -48,7 +48,7 @@ void serialEvent() {
      Serial.read(); 
   }
     Serial.write(_speed);
-}
+  }
 
 int readQD(){
   //Returns value from the QRE1113 

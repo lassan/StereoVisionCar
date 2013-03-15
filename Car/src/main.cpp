@@ -170,6 +170,7 @@ void ImageAcquisitionWorker()
     while (1)
     {
         iterationTime = getTickCount();
+        _car.getSpeed();
 
 //        cout << "highest: " << _stereo.getClosestObjectVal()
 //                << "\tnumber: " << _stereo.getNumObjects()

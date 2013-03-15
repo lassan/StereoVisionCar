@@ -3,7 +3,8 @@
 
 #define PORT_inst 13400
 
-//Arduino arduino("/dev/ttyACM0", 57600);
+Arduino arduino("/dev/ttyACM0", 9600);
+
 Car::Car()
 {
     cout << "Creating car object." << endl;
@@ -89,7 +90,7 @@ void Car::driveUnsafe(int direction, int speed)
     case 0:
         _dataPacket[7] = 0x81;
         break;
-    case 1: //25
+    case 1: //25speed
         _dataPacket[7] = 0xa0;
         break;
     case 2: //50
@@ -120,7 +121,6 @@ void Car::driveUnsafe(int direction, int speed)
     }
     sendto(sockfd, _dataPacket, sizeof(_dataPacket), 0,
             (struct sockaddr *) &servaddr, sizeof(servaddr));
-
     carStatus = FLAGS::MOBILE;
 }
 
@@ -144,6 +144,12 @@ void Car::autoDrive()
     string dum ;
     cin >> dum;
     brake();
+}
+
+void Car::getSpeed()
+{
+    char* buf;
+    arduino.serialport_read(buf);
 }
 
 FLAGS::CARSTATUS Car::status()

@@ -26,8 +26,9 @@ public:
     void driveSafe(uint8_t instructions[2], FLAGS::VISUALS visual);
     void driveUnsafe(int, int);
     void brake();
-    double speed();
     void autoDrive();
+    void getSpeed();
+
     FLAGS::CARSTATUS status();
 };
 

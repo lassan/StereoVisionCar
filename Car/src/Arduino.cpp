@@ -120,21 +120,26 @@ int Arduino::serialport_write(const char* str)
 
 int Arduino::serialport_read(char* buf)
 {
-    cout << serialport_writebyte((uint8_t) 1) << endl;
+    serialport_write("a");
     char b[100];
     int i = 0;
     char until = '\n';
     do
     {
         int n = read(fda, buf, 8);
+        cout << "N: " << n << endl;
+        cout << "buf" << buf[i];
+
         if (n == -1)
+        {
             return -1;
+        }
         if (n == 0)
         {
-            usleep(10 * 1000);
+            usleep(1000);
             continue;
         }
-        cout << buf[i];
+        cout << "buf" << buf[i];
 
         buf[i] = b[0];
         i++;
