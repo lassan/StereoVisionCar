@@ -12,13 +12,14 @@
 
 class Arduino
 {
-    int Initialise(const char* serialport, int baud);
-    int fda;
+private:
+    void Initialise(const char* serialport, int baud);
+    int fd;
 public:
     Arduino(const char*, int);
     int serialport_writebyte(uint8_t);
     int serialport_write(const char*);
-    int serialport_read(char*);
+    string serialport_read();
 };
 
 

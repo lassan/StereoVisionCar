@@ -50,11 +50,11 @@ void Server::initialise()
 
 void Server::sendData(StereoPair &input, Mat &image, bool shouldBrake, Car& car, string message)
 {
-
     try {
         sendBrakeData(shouldBrake);
         displayImage(input, image);
         sendMessage(message);
+        sendSpeed(car.getSpeedString());
         checkForData();
     } catch (Exception e)
     {
@@ -132,6 +132,17 @@ void Server::sendMessage(string message)
             throw "sendMessage failed";
         }
 }
+
+void Server::sendSpeed(string speed)
+{
+    int bytes = send(clientsock, speed.data(), 5, 0);
+
+    if (bytes != 5)
+    {
+        throw "sendSpeed failed";
+    }
+}
+
 void Server::checkForData()
 {
     int n = 0;

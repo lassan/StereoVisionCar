@@ -20,6 +20,9 @@ class Car
     int sockfd;
     FLAGS::CARSTATUS carStatus;
     FLAGS::CARSTATUS prevStatus;
+
+    bool brakeLightOn = false;
+
 public:
     Car();
 
@@ -27,7 +30,12 @@ public:
     void driveUnsafe(int, int);
     void brake();
     void autoDrive();
-    void getSpeed();
+    string getSpeedString();
+    double getSpeed();
+
+    void turnBrakeLightOn();
+    void turnBrakeLightOff();
+
 
     FLAGS::CARSTATUS status();
 };

@@ -6,12 +6,6 @@
  */
 #include "../header/Arduino.h"
 
-#define PORT "/dev/ttyACM0"
-
-//using namespace LibSerial;
-
-//SerialStream ardu;
-
 // takes the string name of the serial port (e.g. "/dev/tty.usbserial","COM1")
 // and a baud rate (bps) and connects to that port at that speed and 8N1.
 // opens the port in fully raw mode so you can send binary data.
@@ -19,19 +13,18 @@
 Arduino::Arduino(const char* serialport, int baud)
 {
     cout << "Creating Arduino object." << endl;/*
-    ardu.Open(PORT);
+     ardu.Open(PORT);
 
-    ardu.SetBaudRate(SerialStreamBuf::BAUD_57600);
-    ardu.SetCharSize(SerialStreamBuf::CHAR_SIZE_8);
-    ardu.SetParity(SerialStreamBuf::PARITY_NONE);
-    ardu.SetFlowControl(SerialStreamBuf::FLOW_CONTROL_NONE);*/
-        fda = Initialise(serialport, baud);
+     ardu.SetBaudRate(SerialStreamBuf::BAUD_57600);
+     ardu.SetCharSize(SerialStreamBuf::CHAR_SIZE_8);
+     ardu.SetParity(SerialStreamBuf::PARITY_NONE);
+     ardu.SetFlowControl(SerialStreamBuf::FLOW_CONTROL_NONE);*/
+    Initialise(serialport, baud);
 }
 
-int Arduino::Initialise(const char* serialport, int baud)
+void Arduino::Initialise(const char* serialport, int baud)
 {
     struct termios toptions;
-    int fd;
     //fprintf(stderr,"init_serialport: opening port %s @ %d bps\n",
     //        serialport,baud);
 
@@ -48,30 +41,30 @@ int Arduino::Initialise(const char* serialport, int baud)
     speed_t brate = baud; // let you override switch below if needed
     switch (baud)
     {
-    case 4800:
-        brate = B4800;
-        break;
-    case 9600:
-        brate = B9600;
-        break;
+        case 4800:
+            brate = B4800;
+            break;
+        case 9600:
+            brate = B9600;
+            break;
 #ifdef B14400
-    case 14400: brate=B14400; break;
+            case 14400: brate=B14400; break;
 #endif
-    case 19200:
-        brate = B19200;
-        break;
+        case 19200:
+            brate = B19200;
+            break;
 #ifdef B28800
-    case 28800: brate=B28800; break;
+            case 28800: brate=B28800; break;
 #endif
-    case 38400:
-        brate = B38400;
-        break;
-    case 57600:
-        brate = B57600;
-        break;
-    case 115200:
-        brate = B115200;
-        break;
+        case 38400:
+            brate = B38400;
+            break;
+        case 57600:
+            brate = B57600;
+            break;
+        case 115200:
+            brate = B115200;
+            break;
     }
     cfsetispeed(&toptions, brate);
     cfsetospeed(&toptions, brate);
@@ -98,52 +91,36 @@ int Arduino::Initialise(const char* serialport, int baud)
     {
         throw "init_serialport: Couldn't set term attributes";
     }
-    return fd;
 }
 
 int Arduino::serialport_writebyte(uint8_t b)
 {
-    int n = write(fda, &b, 1);
+    int n = write(fd, &b, 1);
     if (n != 1)
         return -1;
-    return 0;
+    else
+        return 0;
 }
 
 int Arduino::serialport_write(const char* str)
 {
     int len = strlen(str);
-    int n = write(fda, str, len);
+    int n = write(fd, str, len);
     if (n != len)
         return -1;
-    return 0;
+    else
+        return 0;
 }
 
-int Arduino::serialport_read(char* buf)
+string Arduino::serialport_read()
 {
-    serialport_write("a");
-    char b[100];
-    int i = 0;
-    char until = '\n';
-    do
-    {
-        int n = read(fda, buf, 8);
-        cout << "N: " << n << endl;
-        cout << "buf" << buf[i];
+    char b[6];
 
-        if (n == -1)
-        {
-            return -1;
-        }
-        if (n == 0)
-        {
-            usleep(1000);
-            continue;
-        }
-        cout << "buf" << buf[i];
+    int n = read(fd, b, 6);
 
-        buf[i] = b[0];
-        i++;
-    } while (b[0] != until);
-    buf[i] = '\n';
-    return 0;
+    if (n < 0)
+        throw "Reading from Arduino failed.";
+
+    return b;
 }
+

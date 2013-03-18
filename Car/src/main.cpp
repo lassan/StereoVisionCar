@@ -35,11 +35,7 @@ static bool _buffersFull = false;
 bool _invalidateDispBufLeft = false;
 bool _invalidateDispBufRight = false;
 
-/*control visual output*/
-bool _changeDisparityDynamically = false; //true: display color circle, don't display blobs/disparity
-bool _displayBlobs = true; //true: display blobs; false: display disparity map
 bool _serverEnabled = false; //true: requires client availability
-bool _drivingEnabled = true;
 
 string _messageToSend = "";
 bool _override = true;
@@ -170,19 +166,17 @@ void ImageAcquisitionWorker()
     while (1)
     {
         iterationTime = getTickCount();
-        _car.getSpeed();
 
-//        cout << "highest: " << _stereo.getClosestObjectVal()
-//                << "\tnumber: " << _stereo.getNumObjects()
-//                << "\tarea: " << _stereo.getClosestObjectArea()
-//                << endl;
+        cout << "highest: " << _stereo.getClosestObjectVal()
+                << "\tnumber: " << _stereo.getNumObjects()
+                << "\tarea: " << _stereo.getClosestObjectArea()
+                << endl;
 
 #pragma omp critical(buffer0)
         {
             if (_buffer0Processed)
             {
                 frameTime = getTickCount();
-
 
                 /*Blobs for disparity from image in buffer 0*/
                 if (_disparityBuffer.leftImage.data != NULL)
@@ -204,12 +198,20 @@ void ImageAcquisitionWorker()
 
                 GetStereoImages(_buffer0);
 
+                frameTime = 2 * ((getTickCount() - frameTime) / getTickFrequency());
 
-                frameTime = 2* ((getTickCount() - frameTime)/getTickFrequency());
+                _messageToSend = intToString(1 / frameTime);
 
-                _messageToSend = intToString(1/frameTime);
                 if (_serverEnabled)
-                    _server.sendData(_buffer0, _disparityBuffer.leftImage,_stereo.shouldBrake(),_car, _messageToSend);
+                    _server.sendData(_buffer0, _disparityBuffer.leftImage,
+                            _stereo.shouldBrake(), _car, _messageToSend);
+
+                if (_stereo.shouldBrake()){
+                    _car.brake();
+                    _car.turnBrakeLightOn();
+                } else {
+                    _car.turnBrakeLightOff();
+                }
 
                 _buffer0Processed = false;
 
@@ -237,21 +239,24 @@ void ImageAcquisitionWorker()
                     {
                         _invalidateDispBufLeft = true;
                     }
-
-//                    imshow("disp", _disparityBuffer.rightImage);
-//                    waitKey(5);
-
                 }
 
                 GetStereoImages(_buffer1);
 
+                frameTime = 2 * ((getTickCount() - frameTime) / getTickFrequency());
 
-                frameTime = 2 * ((getTickCount() - frameTime)/getTickFrequency());
+                _messageToSend = intToString(1 / frameTime);
 
-
-                _messageToSend = intToString(1/frameTime);
                 if (_serverEnabled)
-                    _server.sendData(_buffer0, _disparityBuffer.leftImage,_stereo.shouldBrake(),_car, _messageToSend);
+                    _server.sendData(_buffer0, _disparityBuffer.leftImage,
+                            _stereo.shouldBrake(), _car, _messageToSend);
+
+                if (_stereo.shouldBrake()){
+                    _car.brake();
+                    _car.turnBrakeLightOn();
+                } else {
+                    _car.turnBrakeLightOff();
+                }
 
                 _buffer1Processed = false;
 

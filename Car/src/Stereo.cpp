@@ -2,8 +2,8 @@
 #include "../header/Stereo.h"
 #include "../header/Car.h"
 
-#define DISPCHANGEMAX 240
-#define DISPCHANGEMIN 160
+#define DISPCHANGEMAX 190
+#define DISPCHANGEMIN 140
 
 Stereo::Stereo(int SADWindowSize)
 {
@@ -78,9 +78,17 @@ Mat Stereo::disparityMap(StereoPair &images)
 
 bool Stereo::detectObjects(Mat &dispMap)
 {
+
+    blur(dispMap, dispMap, Size(3,3));
+
     Mat element(3, 3, CV_8U, cv::Scalar(1));
 
     erode(dispMap, dispMap, element);
+
+
+    imshow("dispMap", dispMap);
+    waitKey(5);
+
 
     IplImage *dispIpl = new IplImage(dispMap); //create an IplImage from Mat
 
@@ -171,3 +179,4 @@ bool Stereo::shouldBrake()
     else
         return false;
 }
+

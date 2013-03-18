@@ -25,6 +25,7 @@ private:
     void sendImageToClient(Mat& image);
     void sendBrakeData(bool shouldBrake);
     void sendMessage(string message);
+    void sendSpeed(string speed);
     void checkForData();
     void listenForClient();
 

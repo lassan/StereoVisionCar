@@ -3,7 +3,7 @@
 
 #define PORT_inst 13400
 
-Arduino arduino("/dev/ttyACM0", 9600);
+Arduino arduino("/dev/ttyACM0", 56700);
 
 Car::Car()
 {
@@ -36,94 +36,95 @@ void Car::InitialiseArray()
 
 void Car::driveSafe(uint8_t instructions[2], FLAGS::VISUALS visual)
 {
-     if(visual == FLAGS::FAR)
-        {
-         _dataPacket[5] = instructions[0];
-            _dataPacket[7] = instructions[1];
+    if (visual == FLAGS::FAR)
+    {
+        _dataPacket[5] = instructions[0];
+        _dataPacket[7] = instructions[1];
 
-             sendto(sockfd, _dataPacket, sizeof(_dataPacket), 0,
-                     (struct sockaddr *) &servaddr, sizeof(servaddr));
+        sendto(sockfd, _dataPacket, sizeof(_dataPacket), 0,
+                (struct sockaddr *) &servaddr, sizeof(servaddr));
 
-             carStatus = FLAGS::MOBILE;
+        carStatus = FLAGS::MOBILE;
 
-        } else brake();
+    }
+    else
+        brake();
 }
 
 void Car::driveUnsafe(int direction, int speed)
 {
     switch (speed)
     {
-    case 0: //0
-        _dataPacket[5] = 0x81;
-        break;
-    case 1: //3
-        _dataPacket[5] = 0x84;
-        break;
-    case 2: //4
-        _dataPacket[5] = 0x85;
-        break;
-    case 3: //5
-        _dataPacket[5] = 0x86;
-        break;
-    case 4: //6
-        _dataPacket[5] = 0x87;
-        break;
-    case -1: //-1
-        _dataPacket[5] = 0x7e;
-        break;
-    case -2: //-2
-        _dataPacket[5] = 0x7d;
-        break;
-    case -3: //-3
-        _dataPacket[5] = 0x7c;
-        break;
-    case -4: //-4
-        _dataPacket[5] = 0x7a;
-        break;
-    default:
-        brake();
-        break;
+        case 0: //0
+            _dataPacket[5] = 0x81;
+            break;
+        case 1: //3
+            _dataPacket[5] = 0x84;
+            break;
+        case 2: //4
+            _dataPacket[5] = 0x85;
+            break;
+        case 3: //5
+            _dataPacket[5] = 0x86;
+            break;
+        case 4: //6
+            _dataPacket[5] = 0x87;
+            break;
+        case -1: //-1
+            _dataPacket[5] = 0x7e;
+            break;
+        case -2: //-2
+            _dataPacket[5] = 0x7d;
+            break;
+        case -3: //-3
+            _dataPacket[5] = 0x7c;
+            break;
+        case -4: //-4
+            _dataPacket[5] = 0x7a;
+            break;
+        default:
+            brake();
+            break;
     }
 
     switch (direction)
     {
-    case 0:
-        _dataPacket[7] = 0x81;
-        break;
-    case 1: //25speed
-        _dataPacket[7] = 0xa0;
-        break;
-    case 2: //50
-        _dataPacket[7] = 0xc0;
-        break;
-    case 3: //75
-        _dataPacket[7] = 0xe0;
-        break;
-    case 4: //99
-        _dataPacket[7] = 0xff;
-        break;
-    case -1: //-25
-        _dataPacket[7] = 0x5f;
-        break;
-    case -2: //-50
-        _dataPacket[7] = 0x3f;
-        break;
-    case -3: //-75
-        _dataPacket[7] = 0x1f;
-        break;
-    case -4: //-100
-        _dataPacket[7] = 0x00;
-        break;
-    default:
-        cout << "Default case" << endl;
-        brake();
-        break;
+        case 0:
+            _dataPacket[7] = 0x81;
+            break;
+        case 1: //25speed
+            _dataPacket[7] = 0xa0;
+            break;
+        case 2: //50
+            _dataPacket[7] = 0xc0;
+            break;
+        case 3: //75
+            _dataPacket[7] = 0xe0;
+            break;
+        case 4: //99
+            _dataPacket[7] = 0xff;
+            break;
+        case -1: //-25
+            _dataPacket[7] = 0x5f;
+            break;
+        case -2: //-50
+            _dataPacket[7] = 0x3f;
+            break;
+        case -3: //-75
+            _dataPacket[7] = 0x1f;
+            break;
+        case -4: //-100
+            _dataPacket[7] = 0x00;
+            break;
+        default:
+            cout << "Default case" << endl;
+            brake();
+            break;
     }
     sendto(sockfd, _dataPacket, sizeof(_dataPacket), 0,
             (struct sockaddr *) &servaddr, sizeof(servaddr));
     carStatus = FLAGS::MOBILE;
 }
-
 
 void Car::brake()
 {
@@ -133,26 +134,67 @@ void Car::brake()
     sendto(sockfd, _dataPacket, sizeof(_dataPacket), 0,
             (struct sockaddr *) &servaddr, sizeof(servaddr));
 
+    turnBrakeLightOn();
+
     carStatus = FLAGS::STATIONARY;
-    cout << "Braked." << endl;
+//    cout << "Braked." << endl;
 }
 
 void Car::autoDrive()
 {
-    driveUnsafe(0,3);
+    driveUnsafe(0, 3);
     cout << "press key" << endl;
-    string dum ;
+    string dum;
     cin >> dum;
     brake();
 }
 
-void Car::getSpeed()
+//returns speed as a string
+string Car::getSpeedString()
 {
-    char* buf;
-    arduino.serialport_read(buf);
+    arduino.serialport_writebyte(0x00);
+    try
+    {
+        return arduino.serialport_read();
+    } catch (...)
+    {
+        return "-1";
+    }
+    return "-1";
+}
+
+double Car::getSpeed()
+{
+    arduino.serialport_writebyte(0x00);
+    try
+    {
+        return atof(arduino.serialport_read().c_str());
+    } catch (...)
+    {
+        return -1;
+    }
+    return -1;
 }
 
 FLAGS::CARSTATUS Car::status()
 {
     return carStatus;
+}
+
+void Car::turnBrakeLightOn()
+{
+    if (!brakeLightOn)
+    {
+        arduino.serialport_writebyte(0x01);
+        brakeLightOn = true;
+    }
+}
+
+void Car::turnBrakeLightOff()
+{
+    if (brakeLightOn)
+    {
+        arduino.serialport_writebyte(0x02);
+        brakeLightOn = false;
+    }
 }
