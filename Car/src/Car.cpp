@@ -11,7 +11,9 @@ Car::Car()
     InitialiseConnection();
     InitialiseArray();
 
-    carStatus = FLAGS::MOBILE;
+    brakeLightOn = false;
+    leftIndicatorOn = false;
+    rightIndicatorOn = false;
 }
 
 void Car::InitialiseConnection()
@@ -43,9 +45,6 @@ void Car::driveSafe(uint8_t instructions[2], FLAGS::VISUALS visual)
 
         sendto(sockfd, _dataPacket, sizeof(_dataPacket), 0,
                 (struct sockaddr *) &servaddr, sizeof(servaddr));
-
-        carStatus = FLAGS::MOBILE;
-
     }
     else
         brake();
@@ -123,7 +122,6 @@ void Car::driveUnsafe(int direction, int speed)
     }
     sendto(sockfd, _dataPacket, sizeof(_dataPacket), 0,
             (struct sockaddr *) &servaddr, sizeof(servaddr));
-    carStatus = FLAGS::MOBILE;
 }
 
 void Car::brake()
@@ -135,24 +133,13 @@ void Car::brake()
             (struct sockaddr *) &servaddr, sizeof(servaddr));
 
     turnBrakeLightOn();
-
-    carStatus = FLAGS::STATIONARY;
 //    cout << "Braked." << endl;
-}
-
-void Car::autoDrive()
-{
-    driveUnsafe(0, 3);
-    cout << "press key" << endl;
-    string dum;
-    cin >> dum;
-    brake();
 }
 
 //returns speed as a string
 string Car::getSpeedString()
 {
-    arduino.serialport_writebyte(0x00);
+    arduino.serialport_writebyte(ARDUINOCMD::GET_SPEED);
     try
     {
         return arduino.serialport_read();
@@ -165,7 +152,7 @@ string Car::getSpeedString()
 
 double Car::getSpeed()
 {
-    arduino.serialport_writebyte(0x00);
+    arduino.serialport_writebyte(ARDUINOCMD::GET_SPEED);
     try
     {
         return atof(arduino.serialport_read().c_str());
@@ -176,16 +163,11 @@ double Car::getSpeed()
     return -1;
 }
 
-FLAGS::CARSTATUS Car::status()
-{
-    return carStatus;
-}
-
 void Car::turnBrakeLightOn()
 {
     if (!brakeLightOn)
     {
-        arduino.serialport_writebyte(0x01);
+        arduino.serialport_writebyte(ARDUINOCMD::BRAKE_ON);
         brakeLightOn = true;
     }
 }
@@ -194,13 +176,43 @@ void Car::turnBrakeLightOff()
 {
     if (brakeLightOn)
     {
-        arduino.serialport_writebyte(0x02);
+        arduino.serialport_writebyte(ARDUINOCMD::BRAKE_OFF);
         brakeLightOn = false;
     }
 }
 
-void Car::leftIndicatorOn()
+void Car::turnLeftIndicatorOn()
 {
-
+    if (!leftIndicatorOn)
+    {
+        arduino.serialport_writebyte(ARDUINOCMD::LEFT_ON);
+        leftIndicatorOn = true;
+    }
 }
+
+void Car::turnLeftIndicatorOff()
+{
+    if (leftIndicatorOn)
+    {
+        arduino.serialport_writebyte(ARDUINOCMD::LEFT_OFF);
+        leftIndicatorOn = false;
+    }
+}
+
+void Car::turnRightIndicatorOn()
+{
+    if (!rightIndicatorOn)
+    {
+        arduino.serialport_writebyte(ARDUINOCMD::RIGHT_ON);
+        rightIndicatorOn = true;
+    }
+}
+
+void Car::turnRightIndicatorOff()
+{
+    if (rightIndicatorOn)
+    {
+        arduino.serialport_writebyte(ARDUINOCMD::RIGHT_OFF);
+        rightIndicatorOn = false;
+    }
 }
