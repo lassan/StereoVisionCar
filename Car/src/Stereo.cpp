@@ -85,10 +85,8 @@ bool Stereo::detectObjects(Mat &dispMap)
 
     erode(dispMap, dispMap, element);
 
-
-    imshow("dispMap", dispMap);
-    waitKey(5);
-
+//    imshow("dispMap", dispMap);
+//    waitKey(5);
 
     IplImage *dispIpl = new IplImage(dispMap); //create an IplImage from Mat
 

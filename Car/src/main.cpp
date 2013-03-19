@@ -35,7 +35,7 @@ static bool _buffersFull = false;
 bool _invalidateDispBufLeft = false;
 bool _invalidateDispBufRight = false;
 
-bool _serverEnabled = false; //true: requires client availability
+bool _serverEnabled = true; //true: requires client availability
 
 string _messageToSend = "";
 bool _override = true;

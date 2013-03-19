@@ -198,3 +198,9 @@ void Car::turnBrakeLightOff()
         brakeLightOn = false;
     }
 }
+
+void Car::leftIndicatorOn()
+{
+
+}
+}
