@@ -1,5 +1,16 @@
-int QRE1113_Pin = 2; //connected to digital 2
-int brakeLEDPin = 13;
+const int QRE1113_Pin = 2;
+const int brakeLEDPin = 13;
+const int leftIndicatorPin = 3;
+const int rightIndicatorPin = 4;
+
+boolean leftIndicatorOn = false;
+boolean rightIndicatorOn = false;
+
+int leftIndicatorStatus = LOW;
+int rightIndicatorStatus = LOW;
+unsigned long indicatorTimer;
+long previousMillis = 0;
+long indicatorInterval = 250UL;
 
 int _pulseCount = 0;
 double _circumference = 0.1; //in meters
@@ -20,7 +31,6 @@ void setup(){
   // enable timer compare interrupt
   TIMSK1 |= (1 << OCIE1A);
   
-  
   pinMode(brakeLEDPin, OUTPUT);
   
   Serial.begin(56700);
@@ -30,15 +40,16 @@ void setup(){
 void loop(){
 
   int QRE_Value = readQD();
-  
   if(QRE_Value < 500){
      if(_prevQRE > 500) 
      {
         _pulseCount++; 
      }
-  }  
-
+  } 
   _prevQRE = QRE_Value;
+  
+  leftIndicator();
+  rightIndicator();
 }
 
 ISR(TIMER1_COMPA_vect){
@@ -52,24 +63,70 @@ void serialEvent() {
   
   while(Serial.available())
   {
-     byte inByte = Serial.read(); 
+    byte inByte = Serial.read(); 
      
-       switch(inByte) {
-    case 0x00:
-     Serial.println(_speed);
-       break;
-     case 0x01:
-           digitalWrite(brakeLEDPin, HIGH);
-           break;
-    case 0x02:
-      digitalWrite(brakeLEDPin, LOW);
-       break; 
+    switch(inByte) 
+    {
+      case 0x00: //send speed
+         Serial.println(_speed);
+         break;
+      case 0x01: //turn brake light on
+         digitalWrite(brakeLEDPin, HIGH);
+         break;
+     case 0x02:  //turn brake light off
+         digitalWrite(brakeLEDPin, LOW);
+         break; 
+     case 0x03:  //turn left inidicator on
+         leftIndicatorOn = true;
+         break;
+     case 0x04:  //turn left indicator off
+         leftIndicatorOn = false;
+         break;
+     case 0x05:  //turn right indicator on
+         rightIndicatorOn = true;
+         break;
+     case 0x06:  //turn right indicator off
+         rightIndicatorOn = false;
+         break;
+     
      default:
-       break;
+         break;
+    }
   }
-  }
-     
+}
 
+void leftIndicator()
+{
+  
+  if(leftIndicatorOn)
+  {
+      indicatorTimer = millis();
+      if(indicatorTimer - previousMillis > indicatorInterval)
+      {
+        if(leftIndicatorStatus == LOW)
+          leftIndicatorStatus = HIGH;
+        else 
+          leftIndicatorStatus = LOW;
+      }
+  } else leftIndicatorStatus = LOW;
+  digitalWrite(leftIndicatorPin, leftIndicatorStatus);
+}
+
+
+void rightIndicator()
+{
+  if(rightIndicatorOn)
+  {
+      indicatorTimer = millis();
+      if(indicatorTimer - previousMillis > indicatorInterval)
+      {
+        if(rightIndicatorStatus == LOW)
+          rightIndicatorStatus = HIGH;
+        else 
+          rightIndicatorStatus = LOW;
+      }
+  } else rightIndicatorStatus = LOW;
+  digitalWrite(rightIndicatorPin, rightIndicatorStatus);
 }
 
 int readQD(){
