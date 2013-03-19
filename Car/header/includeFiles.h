@@ -8,6 +8,8 @@
 #ifndef INCLUDEFILES_H_
 #define INCLUDEFILES_H_
 
+
+
 #include <opencv2/highgui/highgui.hpp>
 #include <dirent.h>
 #include <cvblobs/blob.h>
@@ -31,6 +33,7 @@
 
 using namespace std;
 using namespace cv;
+
 
 /*ENUM definitions*/
 struct StereoPair {

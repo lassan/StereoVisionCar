@@ -14,9 +14,9 @@ class Car
 {
 public:
     Car();
-    void driveSafe(uint8_t instructions[2], FLAGS::VISUALS visual);
     void driveUnsafe(int, int);
     void brake();
+
     string getSpeedString();
     double getSpeed();
 

@@ -36,20 +36,6 @@ void Car::InitialiseArray()
         _dataPacket[i] = 0x00;
 }
 
-void Car::driveSafe(uint8_t instructions[2], FLAGS::VISUALS visual)
-{
-    if (visual == FLAGS::FAR)
-    {
-        _dataPacket[5] = instructions[0];
-        _dataPacket[7] = instructions[1];
-
-        sendto(sockfd, _dataPacket, sizeof(_dataPacket), 0,
-                (struct sockaddr *) &servaddr, sizeof(servaddr));
-    }
-    else
-        brake();
-}
-
 void Car::driveUnsafe(int direction, int speed)
 {
     switch (speed)
