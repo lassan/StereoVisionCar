@@ -1,21 +1,9 @@
-#include "../header/includeFiles.h"
-#include "../header/helperfunctions.h"
-#include "../header/Server.h"
-#include "../header/Stereo.h"
-#include "../header/Car.h"
 #include "../header/main.h"
-#include <sys/unistd.h>
-#include <sys/fcntl.h>
-#include <stdlib.h>
 
 Mat _M1, _D1, _M2, _D2, _R1, _R2, _P1, _P2, _Q;
 
-int _nOfDisparitiesCoefficient;
-StereoBM _sbm;
 VideoCapture _leftCamera, _rightCamera;
-vector<Mat> _leftFrames, _rightFrames;
 Mat _leftCameraMap1, _leftCameraMap2, _rightCameraMap1, _rightCameraMap2;
-Rect _imageSegment(40, 60, 240, 120);
 
 /*Variables for timing*/
 int MAX_TIMING_ITERATIONS = 50;
@@ -26,12 +14,10 @@ int MAX_TIMING_ITERATIONS = 50;
 StereoPair _buffer0;
 StereoPair _buffer1;
 StereoPair _disparityBuffer;
-bool _bufferEmpty = true;
 
 /*Variables for synchronising workers*/
 bool _buffer0Processed = true;
 bool _buffer1Processed = true;
-static bool _buffersFull = false;
 bool _invalidateDispBufLeft = false;
 bool _invalidateDispBufRight = false;
 
@@ -60,6 +46,9 @@ void Initialise()
     /*Open camera streams*/
     cout << "Initialising stereo cameras" << endl;
     InitCameras();
+
+    cout << "Filling buffers" << endl;
+    InitBuffers();
 }
 
 void InitCalibrationData()
@@ -114,22 +103,13 @@ void InitCameras()
     _rightCamera.set(CV_CAP_PROP_FRAME_HEIGHT, 240);
 }
 
-void GenerateSuperImposedImages()
+void InitBuffers()
 {
-    namedWindow("Overlaid");
+    GetStereoImages(_buffer0);
+    GetStereoImages(_buffer1);
 
-    StereoPair camImages;
-
-    GetStereoImages(camImages);
-
-    imshow("Right image", camImages.rightImage);
-    imshow("Left image", camImages.leftImage);
-
-    Mat overlay = OverlayImages(camImages, 0.5);
-    imshow("Overlaid", overlay);
-
-    cout << "Press any key to continue." << endl;
-    waitKey(0);
+    _disparityBuffer.leftImage = _stereo.disparityMap(_buffer0);
+    _disparityBuffer.rightImage = _stereo.disparityMap(_buffer1);
 }
 
 void GetStereoImages(StereoPair &input)
@@ -144,6 +124,8 @@ void GetStereoImages(StereoPair &input)
             INTER_LINEAR);
     remap(input.rightImage, input.rightImage, _rightCameraMap1,
             _rightCameraMap2, INTER_LINEAR);
+
+    Rect _imageSegment(40, 60, 240, 120);
 
     input.leftImage = input.leftImage(_imageSegment);
     input.rightImage = input.rightImage(_imageSegment);
@@ -163,14 +145,14 @@ void ImageAcquisitionWorker()
 
     double frameTime = 0;
 
-    while (1)
+    while (true)
     {
         iterationTime = getTickCount();
 
-        cout << "highest: " << _stereo.getClosestObjectVal()
-                << "\tnumber: " << _stereo.getNumObjects()
-                << "\tarea: " << _stereo.getClosestObjectArea()
-                << endl;
+//        cout << "highest: " << _stereo.getClosestObjectVal()
+//                << "\tnumber: " << _stereo.getNumObjects()
+//                << "\tarea: " << _stereo.getClosestObjectArea()
+//                << endl;
 
 #pragma omp critical(buffer0)
         {
@@ -178,40 +160,33 @@ void ImageAcquisitionWorker()
             {
                 frameTime = getTickCount();
 
-                /*Blobs for disparity from image in buffer 0*/
-                if (_disparityBuffer.leftImage.data != NULL)
+                if (_invalidateDispBufLeft) //if parameter change required - ignore this buffer
+                {
+                    _invalidateDispBufLeft = false;
+                }
+                else    //otherwise detect objects, brake if required, and check if next buffer should be ignored
                 {
                     _stereo.detectObjects(_disparityBuffer.leftImage);
 
-                    if (_invalidateDispBufLeft)
-                    {
-                        _invalidateDispBufLeft = false;
-                    }
-                    else if (_stereo.parameterChangeRequired())
-                    {
+                    if (_stereo.shouldBrake())
+                        _car.brake();
+                    else
+                        _car.turnBrakeLightOff();
+
+                    if (_stereo.parameterChangeRequired())
                         _invalidateDispBufRight = true;
-                    }
-//
-//                    imshow("disp", _disparityBuffer.leftImage);
-//                    waitKey(5);
                 }
 
                 GetStereoImages(_buffer0);
 
-                frameTime = 2 * ((getTickCount() - frameTime) / getTickFrequency());
+                frameTime = 2
+                        * ((getTickCount() - frameTime) / getTickFrequency());
 
                 _messageToSend = intToString(1 / frameTime);
 
                 if (_serverEnabled)
                     _server.sendData(_buffer0, _disparityBuffer.leftImage,
                             _stereo.shouldBrake(), _car, _messageToSend);
-
-                if (_stereo.shouldBrake()){
-                    _car.brake();
-                    _car.turnBrakeLightOn();
-                } else {
-                    _car.turnBrakeLightOff();
-                }
 
                 _buffer0Processed = false;
 
@@ -220,51 +195,39 @@ void ImageAcquisitionWorker()
         }
 #pragma omp critical(buffer1)
         {
-
             if (_buffer1Processed)
             {
-
                 frameTime = getTickCount();
 
-                /*Blobs for disparity from image in buffer 1*/
-                if (_disparityBuffer.rightImage.data != NULL)
+                if (_invalidateDispBufRight) //if parameter change required - ignore this buffer
+                {
+                    _invalidateDispBufRight = false;
+                }
+                else    //otherwise detect objects, brake if required, and check if next buffer should be ignored
                 {
                     _stereo.detectObjects(_disparityBuffer.rightImage);
 
-                    if (_invalidateDispBufRight)
-                    {
-                        _invalidateDispBufRight = false;
-                    }
-                    else if (_stereo.parameterChangeRequired())
-                    {
+                    if (_stereo.shouldBrake())
+                        _car.brake();
+                    else
+                        _car.turnBrakeLightOff();
+
+                    if (_stereo.parameterChangeRequired())
                         _invalidateDispBufLeft = true;
-                    }
                 }
 
                 GetStereoImages(_buffer1);
 
-                frameTime = 2 * ((getTickCount() - frameTime) / getTickFrequency());
+                frameTime = 2
+                        * ((getTickCount() - frameTime) / getTickFrequency());
 
                 _messageToSend = intToString(1 / frameTime);
-
-                if (_serverEnabled)
-                    _server.sendData(_buffer0, _disparityBuffer.leftImage,
-                            _stereo.shouldBrake(), _car, _messageToSend);
-
-                if (_stereo.shouldBrake()){
-                    _car.brake();
-                    _car.turnBrakeLightOn();
-                } else {
-                    _car.turnBrakeLightOff();
-                }
 
                 _buffer1Processed = false;
 
                 iterationCounter++;
             }
         }
-
-        _buffersFull = true;
 
         iterationTime = (getTickCount() - iterationTime) * 0.000000001;
         totalTime += iterationTime;
@@ -280,17 +243,6 @@ void ImageAcquisitionWorker()
 
 void DisparityCalculationWorker()
 {
-    /*Print reassuring message*/
-    cout << "Waiting for buffers to fill.";
-    while (!_buffersFull)
-    {
-        float tempTime = getTickCount();
-        tempTime = (getTickCount() - tempTime) * 0.000000001;
-        if (tempTime > 0.01)
-            cout << ".";
-    }
-    cout << endl << "Buffers full. Commencing processing" << endl;
-
     while (true)
     {
 
@@ -299,7 +251,6 @@ void DisparityCalculationWorker()
             if (!_buffer1Processed)
             {
                 _stereo.changeParameters(21, _car);
-
                 _disparityBuffer.rightImage = _stereo.disparityMap(_buffer1);
                 _buffer1Processed = true;
             }
@@ -309,7 +260,6 @@ void DisparityCalculationWorker()
             if (!_buffer0Processed)
             {
                 _stereo.changeParameters(21, _car);
-
                 _disparityBuffer.leftImage = _stereo.disparityMap(_buffer0);
                 _buffer0Processed = true;
             }
@@ -320,7 +270,6 @@ void DisparityCalculationWorker()
 int main()
 {
     Initialise();
-//    destroyAllWindows();
 
 #pragma omp parallel
     {
@@ -335,8 +284,24 @@ int main()
                 DisparityCalculationWorker();
             }
         }
-
     }
     return 0;
 }
 
+void GenerateSuperImposedImages()
+{
+    namedWindow("Overlaid");
+
+    StereoPair camImages;
+
+    GetStereoImages(camImages);
+
+    imshow("Right image", camImages.rightImage);
+    imshow("Left image", camImages.leftImage);
+
+    Mat overlay = OverlayImages(camImages, 0.5);
+    imshow("Overlaid", overlay);
+
+    cout << "Press any key to continue." << endl;
+    waitKey(0);
+}
