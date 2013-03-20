@@ -7,6 +7,7 @@
 
 #include "../header/Server.h"
 
+
 void Server::initialise()
 {
     cout << "Initialising server. Please start the client" << endl;
@@ -18,6 +19,8 @@ void Server::initialise()
         cerr << "socket() failed";
         exit(1);
     }
+    serversock = socket(PF_INET, SOCK_STREAM, 0);
+
 
     /* setup server's IP and port */
     memset(&server, 0, sizeof(server));
@@ -28,7 +31,6 @@ void Server::initialise()
     /* bind the socket */
     if (bind(serversock, (const sockaddr*) &server, sizeof(server)) == -1)
     {
-        //quit("bind() failed", 1);
         cerr << "bind() failed";
         exit(1);
     }
@@ -45,18 +47,28 @@ void Server::initialise()
         exit(1);
     }
 
+
     hasClient = 1;
 }
 
 void Server::sendData(StereoPair &input, Mat &image, bool shouldBrake, Car& car, string message)
 {
     try {
-        sendBrakeData(shouldBrake);
+    	tutorial::Packet info;
+    	if(shouldBrake){
+    		info.set_driving(1);
+    	}
+    	else{
+    		info.set_driving(0);
+    	}
+    	info.set_frames(message);
+    	info.set_speed(car.getSpeedString());
+    	char buf[20];
+    	info.SerializePartialToArray(buf,20);
+		send(clientsock, buf, 20, 0);
         displayImage(input, image);
-        sendMessage(message);
-        sendSpeed(car.getSpeedString());
         checkForData();
-    } catch (Exception e)
+    } catch (Exception & e)
     {
         car.brake();
         cout << e.msg << endl;
@@ -125,9 +137,9 @@ void  Server::sendBrakeData(bool shouldBrake)
 
 void Server::sendMessage(string message)
 {
-    int bytes = send(clientsock, message.data(), 32, 0);
+    int bytes = send(clientsock, message.data(), 5, 0);
 
-    if (bytes != 32)
+    if (bytes != 5)
         {
             throw "sendMessage failed";
         }
@@ -204,4 +216,3 @@ void Server::listenForClient()
     }
     hasClient = 1;
 }
-

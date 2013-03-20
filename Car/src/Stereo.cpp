@@ -2,14 +2,14 @@
 #include "../header/Stereo.h"
 #include "../header/Car.h"
 
-#define DISPCHANGEMAX 190
-#define DISPCHANGEMIN 140
+#define DISPCHANGEMAX 235
+#define DISPCHANGEMIN 125
 
 Stereo::Stereo(int SADWindowSize)
 {
     cout << "Creating Stereo object." << endl;
     maxDisp = 5;
-    minDisp = 3;
+    minDisp = 2;
     numObjects = 3;
     visual = FLAGS::FAR;
 
@@ -79,7 +79,7 @@ Mat Stereo::disparityMap(StereoPair &images)
 bool Stereo::detectObjects(Mat &dispMap)
 {
 
-    blur(dispMap, dispMap, Size(3,3));
+//    blur(dispMap, dispMap, Size(3,3));
 
     Mat element(3, 3, CV_8U, cv::Scalar(1));
 
@@ -157,7 +157,7 @@ double Stereo::getClosestObjectArea()
 // but area is very large, could mean further away landscape, so don't stop
 bool Stereo::texturelessObjectPresent()
 {
-    if (numObjects <= 1 && objArea < 10000)
+    if ((numObjects <= 1 && objArea < 7000) || objArea == -1)
     {
         cout << "Textureless Object" << endl;
 
@@ -169,8 +169,8 @@ bool Stereo::texturelessObjectPresent()
 
 bool Stereo::shouldBrake()
 {
-//  if (visual == FLAGS::NEAR || texturelessObjectPresent())
-  if(visual == FLAGS::NEAR)
+  if (visual == FLAGS::NEAR || texturelessObjectPresent())
+//  if(visual == FLAGS::NEAR)
     {
         return true;
     }

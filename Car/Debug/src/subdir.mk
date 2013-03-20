@@ -7,6 +7,7 @@ CPP_SRCS += \
 ../src/Arduino.cpp \
 ../src/Car.cpp \
 ../src/Server.cpp \
+../src/SoundPlay.cpp \
 ../src/Stereo.cpp \
 ../src/main.cpp 
 
@@ -14,6 +15,7 @@ OBJS += \
 ./src/Arduino.o \
 ./src/Car.o \
 ./src/Server.o \
+./src/SoundPlay.o \
 ./src/Stereo.o \
 ./src/main.o 
 
@@ -21,6 +23,7 @@ CPP_DEPS += \
 ./src/Arduino.d \
 ./src/Car.d \
 ./src/Server.d \
+./src/SoundPlay.d \
 ./src/Stereo.d \
 ./src/main.d 
 

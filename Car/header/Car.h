@@ -9,6 +9,7 @@
 #define CAR_H_
 
 #include "includeFiles.h"
+#include "../header/Arduino.h"
 
 class Car
 {
@@ -28,9 +29,10 @@ public:
     void turnRightIndicatorOff();
 
 private:
-    void InitialiseConnection();
-    void InitialiseArray();
+    void initialiseConnection();
+    void initialiseArray();
 
+//    Arduino arduino;
     unsigned char _dataPacket[13];
     struct sockaddr_in servaddr;
     int sockfd;

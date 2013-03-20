@@ -1,22 +1,26 @@
 #include "../header/Car.h"
-#include "../header/Arduino.h"
 
 #define PORT_inst 13400
 
 Arduino arduino("/dev/ttyACM0", 56700);
-
 Car::Car()
 {
     cout << "Creating car object." << endl;
-    InitialiseConnection();
-    InitialiseArray();
+    initialiseConnection();
+    initialiseArray();
+
+//   try{
+//        arduino.initialise("/dev/ttyACMO", 56700);
+//    }catch(...){
+//        cerr << "Connecting to the arduino failed." << endl;
+//    }
 
     brakeLightOn = false;
     leftIndicatorOn = false;
     rightIndicatorOn = false;
 }
 
-void Car::InitialiseConnection()
+void Car::initialiseConnection()
 {
     cout << "Opening port for car..";
 
@@ -29,7 +33,7 @@ void Car::InitialiseConnection()
     cout << "\tPort open" << endl;
 }
 
-void Car::InitialiseArray()
+void Car::initialiseArray()
 {
     _dataPacket[0] = 0x06;
     for (int i = 1; i < 13; i++)

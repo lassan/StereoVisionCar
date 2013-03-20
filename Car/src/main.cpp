@@ -21,7 +21,7 @@ bool _buffer1Processed = true;
 bool _invalidateDispBufLeft = false;
 bool _invalidateDispBufRight = false;
 
-bool _serverEnabled = true; //true: requires client availability
+bool _serverEnabled = false; //true: requires client availability
 
 string _messageToSend = "";
 bool _override = true;
@@ -142,6 +142,7 @@ void ImageAcquisitionWorker()
     int iterationCounter = 0;
     float iterationTime = 0;
     float totalTime = 0;
+    int prevFps = 0;
 
     double frameTime = 0;
 
@@ -158,15 +159,16 @@ void ImageAcquisitionWorker()
         {
             if (_buffer0Processed)
             {
-                frameTime = getTickCount();
-
                 if (_invalidateDispBufLeft) //if parameter change required - ignore this buffer
                 {
                     _invalidateDispBufLeft = false;
                 }
-                else    //otherwise detect objects, brake if required, and check if next buffer should be ignored
+                else //otherwise detect objects, brake if required, and check if next buffer should be ignored
                 {
                     _stereo.detectObjects(_disparityBuffer.leftImage);
+
+//                    imshow("disp", _disparityBuffer.leftImage);
+//                    waitKey(5);
 
                     if (_stereo.shouldBrake())
                         _car.brake();
@@ -179,10 +181,7 @@ void ImageAcquisitionWorker()
 
                 GetStereoImages(_buffer0);
 
-                frameTime = 2
-                        * ((getTickCount() - frameTime) / getTickFrequency());
-
-                _messageToSend = intToString(1 / frameTime);
+                _messageToSend = intToString(prevFps);
 
                 if (_serverEnabled)
                     _server.sendData(_buffer0, _disparityBuffer.leftImage,
@@ -197,13 +196,11 @@ void ImageAcquisitionWorker()
         {
             if (_buffer1Processed)
             {
-                frameTime = getTickCount();
-
                 if (_invalidateDispBufRight) //if parameter change required - ignore this buffer
                 {
                     _invalidateDispBufRight = false;
                 }
-                else    //otherwise detect objects, brake if required, and check if next buffer should be ignored
+                else //otherwise detect objects, brake if required, and check if next buffer should be ignored
                 {
                     _stereo.detectObjects(_disparityBuffer.rightImage);
 
@@ -212,16 +209,18 @@ void ImageAcquisitionWorker()
                     else
                         _car.turnBrakeLightOff();
 
+//                    imshow("disp", _disparityBuffer.rightImage);
+//                    waitKey(5);
+
                     if (_stereo.parameterChangeRequired())
                         _invalidateDispBufLeft = true;
                 }
 
                 GetStereoImages(_buffer1);
 
-                frameTime = 2
-                        * ((getTickCount() - frameTime) / getTickFrequency());
-
-                _messageToSend = intToString(1 / frameTime);
+                if (_serverEnabled)
+                    _server.sendData(_buffer0, _disparityBuffer.leftImage,
+                            _stereo.shouldBrake(), _car, _messageToSend);
 
                 _buffer1Processed = false;
 
@@ -233,8 +232,8 @@ void ImageAcquisitionWorker()
         totalTime += iterationTime;
         if (iterationCounter >= MAX_TIMING_ITERATIONS)
         {
-            cout << "Image acquisition and preparation (fps): "
-                    << (iterationCounter * 2) / totalTime << endl;
+            prevFps = (iterationCounter * 2) / totalTime;
+            cout << prevFps << endl;
             iterationCounter = 0;
             totalTime = 0;
         }

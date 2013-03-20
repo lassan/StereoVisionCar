@@ -12,17 +12,11 @@
 // returns valid fd, or -1 on error
 Arduino::Arduino(const char* serialport, int baud)
 {
-    cout << "Creating Arduino object." << endl;/*
-     ardu.Open(PORT);
-
-     ardu.SetBaudRate(SerialStreamBuf::BAUD_57600);
-     ardu.SetCharSize(SerialStreamBuf::CHAR_SIZE_8);
-     ardu.SetParity(SerialStreamBuf::PARITY_NONE);
-     ardu.SetFlowControl(SerialStreamBuf::FLOW_CONTROL_NONE);*/
-    Initialise(serialport, baud);
+    cout << "Creating Arduino object." << endl;
+    initialise(serialport, baud);
 }
 
-void Arduino::Initialise(const char* serialport, int baud)
+void Arduino::initialise(const char* serialport, int baud)
 {
     struct termios toptions;
     //fprintf(stderr,"init_serialport: opening port %s @ %d bps\n",
