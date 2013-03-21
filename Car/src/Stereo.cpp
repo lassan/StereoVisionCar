@@ -11,7 +11,10 @@ Stereo::Stereo(int SADWindowSize)
     maxDisp = 5;
     minDisp = 2;
     numObjects = 3;
+    totalArea = 0;
     visual = FLAGS::FAR;
+    stereoInfo = FLAGS::NORMAL;
+    visualHistoryIndex = 0;
 
     Initialise(minDisp, SADWindowSize);
 }
@@ -21,34 +24,54 @@ void Stereo::Initialise(int disp, int SADWindowSize)
     nDisparity = 16 * disp;
     sbm = StereoBM(StereoBM::BASIC_PRESET, nDisparity, SADWindowSize);
 }
-
-bool Stereo::changeParameters(int _SADWindowSize, Car &car)
+/*remember the frames to stop jerky movement of the car when on the boundary*/
+void Stereo::addFrameToHistory()
 {
-    if (dispChange == FLAGS::INCREMENT)
+    if (visualHistoryIndex == 3)
+        visualHistoryIndex = 0;
+    visualHistory[visualHistoryIndex] = dispChange;
+    visualHistoryIndex++;
+}
+
+/*only start moving if previous three frames consistently say so*/
+bool Stereo::visualChangeAllowed()
+{
+    if ((visualHistory[0] == FLAGS::DECREMENT)
+            && (visualHistory[1] == FLAGS::DECREMENT)
+            && (visualHistory[2] == FLAGS::DECREMENT))
     {
-        Initialise(maxDisp, _SADWindowSize);
-        visual = FLAGS::NEAR;
-        return true;
-    }
-    else if (dispChange == FLAGS::DECREMENT)
-    {
-        Initialise(minDisp, _SADWindowSize);
-        visual = FLAGS::FAR;
         return true;
     }
     else
         return false;
 }
 
-FLAGS::VISUALS Stereo::getVisualInfo()
+bool Stereo::changeParameters(int _SADWindowSize)
 {
-    return visual;
+    if (dispChange == FLAGS::UNCHANGED)
+    {
+        return false;
+    }
+    else if (dispChange == FLAGS::INCREMENT)
+    {
+        Initialise(maxDisp, _SADWindowSize);
+        visual = FLAGS::NEAR;
+    }
+    else if (dispChange == FLAGS::DECREMENT)
+    {
+        if (visualChangeAllowed())
+        {
+            Initialise(minDisp, _SADWindowSize);
+            visual = FLAGS::FAR;
+        }
+    }
+    return true;
 }
 
 //To decide whether the disparity buffer needs to be discarded
 bool Stereo::parameterChangeRequired()
 {
-    if (dispChange == FLAGS::INCREMENT || dispChange == FLAGS::DECREMENT)
+    if (dispChange != FLAGS::UNCHANGED)
         return true;
     else
         return false;
@@ -78,19 +101,18 @@ Mat Stereo::disparityMap(StereoPair &images)
 
 bool Stereo::detectObjects(Mat &dispMap)
 {
-
 //    blur(dispMap, dispMap, Size(3,3));
 
     Mat element(3, 3, CV_8U, cv::Scalar(1));
 
     erode(dispMap, dispMap, element);
 
-//    imshow("dispMap", dispMap);
-//    waitKey(5);
+    imshow("disp", dispMap);
+    waitKey(5);
 
     IplImage *dispIpl = new IplImage(dispMap); //create an IplImage from Mat
 
-    //Declare variables
+//Declare variables
     CBlobResult blobs;
     int minArea = 250;
 
@@ -101,13 +123,16 @@ bool Stereo::detectObjects(Mat &dispMap)
 
     CBlob* currentBlob;
     vector<int> meanPixelValues;
-    vector<Rect> boundingBoxes;
+    vector<double> areas; //store all blob areas
+    totalArea = 0; //reset value, the other ones get overwritten, this one gets added to
 
     for (int i = 0; i < numObjects; i++)
     {
         currentBlob = blobs.GetBlob(i);
         meanPixelValues.push_back(currentBlob->Mean(dispIpl));
         boundingBoxes.push_back(currentBlob->GetBoundingBox());
+        totalArea += currentBlob->Area();
+        areas.push_back(currentBlob->Area());
     }
 
     vector<int>::const_iterator it;
@@ -116,24 +141,55 @@ bool Stereo::detectObjects(Mat &dispMap)
     {
         it = max_element(meanPixelValues.begin(), meanPixelValues.end());
         closestObjectVal = *it;
-        objArea = currentBlob->Area();
         objectBoundingBox = boundingBoxes[it - meanPixelValues.begin()]; //copy variable to return (it will go out of scope otherwise)
-
-        if (closestObjectVal > DISPCHANGEMAX)
-            dispChange = FLAGS::INCREMENT;
-        else if (closestObjectVal < DISPCHANGEMIN)
-            dispChange = FLAGS::DECREMENT;
-        else
-            dispChange = FLAGS::ABSOLUTE;
-
-        return true;
+        objArea = areas[it - meanPixelValues.begin()];
     }
     else
     {
         closestObjectVal = -1;
         objArea = -1;
+        totalArea = -1;
         return false;
     }
+
+    if (closestObjectVal > DISPCHANGEMAX)
+        {dispChange = FLAGS::INCREMENT;}
+    else if (closestObjectVal < DISPCHANGEMIN)
+        {dispChange = FLAGS::DECREMENT;}
+    else
+        {dispChange = FLAGS::UNCHANGED;}
+    addFrameToHistory();
+
+    return true;
+}
+
+bool Stereo::shouldBrake()
+{
+    if (visual == FLAGS::NEAR)
+    {
+        stereoInfo = FLAGS::NORMAL;
+        return true;
+    }
+    if (numObjects == 0) //if no objects, complain
+    {
+//        cout << "No object. Braking." << endl;
+        stereoInfo = FLAGS::NO_OBJECT;
+        return true;
+    }
+    if (numObjects < 2 && totalArea < 6500) //textureless object
+    {
+//        cout << "Textureless. Braking" << endl;
+        stereoInfo = FLAGS::TEXTURELESS;
+        return true;
+    }
+    if (totalArea < 8000) //roughly 1/6 of total possible
+    {
+//        cout << "Too close. Braking" << endl;
+        stereoInfo = FLAGS::TOO_CLOSE;
+        return true;
+    }
+    else
+        return false;
 }
 
 int Stereo::getNumObjects()
@@ -141,40 +197,24 @@ int Stereo::getNumObjects()
     return numObjects;
 }
 
-/* Must call closestObject() before this *
+/* Must call detectObjects before this *
  * Returns the average pixel value of object in disparity map*/
 int Stereo::getClosestObjectVal()
 {
     return closestObjectVal;
 }
 
-double Stereo::getClosestObjectArea()
+int Stereo::getClosestObjectArea()
 {
     return objArea;
 }
 
-//checks if less than 2 objects are present
-// but area is very large, could mean further away landscape, so don't stop
-bool Stereo::texturelessObjectPresent()
+int Stereo::getTotalArea()
 {
-    if ((numObjects <= 1 && objArea < 7000) || objArea == -1)
-    {
-        cout << "Textureless Object" << endl;
-
-        return true;
-    }
-    else
-        return false;
+    return totalArea;
 }
 
-bool Stereo::shouldBrake()
+FLAGS::VISUALS Stereo::getVisualInfo()
 {
-//  if (visual == FLAGS::NEAR || texturelessObjectPresent())
-  if(visual == FLAGS::NEAR)
-    {
-        return true;
-    }
-    else
-        return false;
+    return visual;
 }
-

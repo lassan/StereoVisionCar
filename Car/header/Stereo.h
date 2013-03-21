@@ -14,24 +14,34 @@ class Stereo
     int closestObjectVal;
     FLAGS::NUMDISPARITY dispChange;
     FLAGS::VISUALS visual;
+    FLAGS::NUMDISPARITY visualHistory[3];
+    int visualHistoryIndex;
     int maxDisp;
     int minDisp;
     int numObjects;
-    double objArea;
+    int objArea;
+    int totalArea;
+
+    vector<Rect> boundingBoxes; //store all blob bounding boxes
+
+    FLAGS::STEREOINFO stereoInfo;
+
+    bool visualChangeAllowed();
+    void addFrameToHistory();
+
 public:
     Stereo(int);
-    bool changeParameters(int, Car&);
+    bool changeParameters(int);
     bool parameterChangeRequired();
     Mat disparityMap(StereoPair&);
     bool detectObjects(Mat&);
     FLAGS::VISUALS getVisualInfo();
     int getClosestObjectVal();
     int getNumObjects();
-    double getClosestObjectArea();
-    bool texturelessObjectPresent();
+    int getClosestObjectArea();
+    int getTotalArea();
 
     bool shouldBrake();
-
 };
 
 #endif /* STEREO_H_ */
