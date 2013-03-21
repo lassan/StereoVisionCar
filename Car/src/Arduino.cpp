@@ -12,8 +12,13 @@
 // returns valid fd, or -1 on error
 Arduino::Arduino(const char* serialport, int baud)
 {
-    cout << "Creating Arduino object." << endl;
+    cout << "Connecting to the Arduino." << endl;
+    try{
     initialise(serialport, baud);
+    } catch(...)
+    {
+        cerr << "Connecting to the Arduino failed." << endl;
+    }
 }
 
 void Arduino::initialise(const char* serialport, int baud)

@@ -8,8 +8,6 @@
 #ifndef INCLUDEFILES_H_
 #define INCLUDEFILES_H_
 
-
-
 #include <opencv2/highgui/highgui.hpp>
 #include <dirent.h>
 #include <cvblobs/blob.h>
@@ -34,24 +32,37 @@
 using namespace std;
 using namespace cv;
 
-
 /*ENUM definitions*/
-struct StereoPair {
+struct StereoPair
+{
     Mat leftImage, rightImage;
 };
 
-struct FLAGS {
-    enum NUMDISPARITY {
-        ABSOLUTE = 0x01, INCREMENT = 0x02, DECREMENT = 0x04
+struct FLAGS
+{
+    enum NUMDISPARITY
+    {
+        UNCHANGED, INCREMENT, DECREMENT
     };
-    enum CARSTATUS{
+    enum CARSTATUS
+    {
         MOBILE, REVERSE, STATIONARY
     };
-    enum CLIENTDISPLAY{
+    enum CLIENTDISPLAY
+    {
         LEFT, RIGHT, BLOBS, DISPARITY
     };
-    enum VISUALS{
+    enum VISUALS
+    {
         NEAR, FAR
+    };
+    enum STEREOINFO
+    {
+        NORMAL = 0x00,
+        NO_OBJECT = 0x01,
+        TEXTURELESS = 0x02,
+        TOO_CLOSE = 0x03,
+        ASSESSING = 0x04
     };
 };
 

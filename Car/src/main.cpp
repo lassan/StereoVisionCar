@@ -12,7 +12,7 @@ string _messageToSend = "";
 bool _override = true;
 
 Server _server;
-Stereo _stereo(21);
+Stereo _stereo(25);
 Car _car;
 
 void Initialise()
@@ -21,7 +21,14 @@ void Initialise()
 
     if (_serverEnabled)
     {
-        _server.initialise();
+        try
+        {
+            _server.initialise();
+        } catch (string& err)
+        {
+            cerr << err << endl;
+            cerr << "Trying to connect again: " << endl;
+        }
     }
 
     /*Load calibration matrices from file*/
@@ -34,6 +41,7 @@ void Initialise()
 
     cout << "Filling buffers" << endl;
     InitBuffers();
+    cout << "Good to go" << endl;
 }
 
 void InitCalibrationData()
@@ -122,6 +130,13 @@ void GetStereoImages(StereoPair &input)
     blur(input.rightImage, input.rightImage, Size(3, 3));
 }
 
+void printInfo()
+{
+    cout << "highest: " << _stereo.getClosestObjectVal() << "\tnumber: "
+            << _stereo.getNumObjects() << "\tarea: " << _stereo.getTotalArea()
+            << endl;
+}
+
 void ImageAcquisitionWorker()
 {
     int iterationCounter = 0;
@@ -129,103 +144,84 @@ void ImageAcquisitionWorker()
     float totalTime = 0;
     int prevFps = 0;
 
-    double frameTime = 0;
-
     while (true)
     {
-//        iterationTime = getTickCount();
-
-//        cout << "highest: " << _stereo.getClosestObjectVal()
-//                << "\tnumber: " << _stereo.getNumObjects()
-//                << "\tarea: " << _stereo.getClosestObjectArea()
-//                << endl;
-
+        iterationTime = getTickCount();
 #pragma omp critical(buffer0)
         {
-            if (_buffer0Processed)
+            if (_invalidateDispBufLeft) //if parameter change required - ignore this buffer
             {
-                if (_invalidateDispBufLeft) //if parameter change required - ignore this buffer
-                {
-                    _invalidateDispBufLeft = false;
-                }
-                else //otherwise detect objects, brake if required, and check if next buffer should be ignored
-                {
-                    _stereo.detectObjects(_disparityBuffer.leftImage);
-
-//                    imshow("disp", _disparityBuffer.leftImage);
-//                    waitKey(5);
-
-                    if (_stereo.shouldBrake()){
-                        _car.brake();
-                    }
-                    else
-                        _car.turnBrakeLightOff();
-
-                    _messageToSend = intToString(prevFps);
-
-                    if (_serverEnabled)
-                        _server.sendData(_buffer0, _disparityBuffer.leftImage,
-                                _stereo.shouldBrake(), _car, intToString(prevFps));
-
-                    if (_stereo.parameterChangeRequired())
-                        _invalidateDispBufRight = true;
-                }
-
-                GetStereoImages(_buffer0);
-
-                _buffer0Processed = false;
-
-                iterationCounter++;
+                _invalidateDispBufLeft = false;
             }
+            else //otherwise detect objects, brake if required, and check if next buffer should be ignored
+            {
+                _stereo.detectObjects(_disparityBuffer.leftImage);
+
+                controlCar();
+
+                if (_serverEnabled)
+                    _server.sendData(_buffer0, _disparityBuffer.leftImage,
+                            _stereo.shouldBrake(), _car, intToString(prevFps));
+
+                if (_stereo.parameterChangeRequired())
+                    _invalidateDispBufRight = true;
+            }
+
+            GetStereoImages(_buffer0);
+
+            _buffer0Processed = false;
+
+            iterationCounter++;
+
+//               printInfo();
         }
 #pragma omp critical(buffer1)
         {
-            if (_buffer1Processed)
+            if (_invalidateDispBufRight) //if parameter change required - ignore this buffer
             {
-
-                if (_invalidateDispBufRight) //if parameter change required - ignore this buffer
-                {
-                    _invalidateDispBufRight = false;
-                }
-                else //otherwise detect objects, brake if required, and check if next buffer should be ignored
-                {
-                    _stereo.detectObjects(_disparityBuffer.rightImage);
-
-                    if (_stereo.shouldBrake())
-                        _car.brake();
-                    else
-                        _car.turnBrakeLightOff();
-
-//                    imshow("disp", _disparityBuffer.rightImage);
-//                    waitKey(5);
-
-                    if (_serverEnabled)
-                        _server.sendData(_buffer1, _disparityBuffer.rightImage,
-                                _stereo.shouldBrake(), _car, intToString(prevFps));
-
-
-                    if (_stereo.parameterChangeRequired())
-                        _invalidateDispBufLeft = true;
-                }
-
-                GetStereoImages(_buffer1);
-
-                _buffer1Processed = false;
-
-                iterationCounter++;
+                _invalidateDispBufRight = false;
             }
+            else //otherwise detect objects, brake if required, and check if next buffer should be ignored
+            {
+                _stereo.detectObjects(_disparityBuffer.rightImage);
+
+                controlCar();
+
+                if (_serverEnabled)
+                    _server.sendData(_buffer1, _disparityBuffer.rightImage,
+                            _stereo.shouldBrake(), _car, intToString(prevFps));
+
+                if (_stereo.parameterChangeRequired())
+                    _invalidateDispBufLeft = true;
+            }
+
+            GetStereoImages(_buffer1);
+
+            _buffer1Processed = false;
+
+            iterationCounter++;
+
+//                printInfo();
         }
 
         iterationTime = (getTickCount() - iterationTime) * 0.000000001;
         totalTime += iterationTime;
         if (iterationCounter >= MAX_TIMING_ITERATIONS)
         {
-            prevFps = (iterationCounter * 2) / totalTime;
+            prevFps = (iterationCounter) / totalTime;
             cout << prevFps << endl;
             iterationCounter = 0;
             totalTime = 0;
         }
     }
+}
+
+void controlCar()
+{
+    if (_stereo.shouldBrake())
+        _car.brake();
+    else
+        _car.turnBrakeLightOff();
 }
 
 void DisparityCalculationWorker()
@@ -235,21 +231,15 @@ void DisparityCalculationWorker()
 
 #pragma omp critical(buffer1)
         {
-            if (!_buffer1Processed)
-            {
-                _stereo.changeParameters(21, _car);
-                _disparityBuffer.rightImage = _stereo.disparityMap(_buffer1);
-                _buffer1Processed = true;
-            }
+            _stereo.changeParameters(25);
+            _disparityBuffer.rightImage = _stereo.disparityMap(_buffer1);
+            _buffer1Processed = true;
         }
 #pragma omp critical(buffer0)
         {
-            if (!_buffer0Processed)
-            {
-                _stereo.changeParameters(21, _car);
-                _disparityBuffer.leftImage = _stereo.disparityMap(_buffer0);
-                _buffer0Processed = true;
-            }
+            _stereo.changeParameters(25);
+            _disparityBuffer.leftImage = _stereo.disparityMap(_buffer0);
+            _buffer0Processed = true;
         }
     }
 }

@@ -26,6 +26,7 @@ void InitBuffers();
 
 void GetStereoImages(StereoPair &input);
 void ImageAcquisitionWorker();
+void controlCar();
 void DisparityCalculationWorker();
 
 void GenerateSuperImposedImages();

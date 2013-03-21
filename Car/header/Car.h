@@ -15,7 +15,6 @@ class Car
 {
 public:
     Car();
-    void driveUnsafe(int, int);
     void brake();
 
     string getSpeedString();
