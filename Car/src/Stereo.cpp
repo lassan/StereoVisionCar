@@ -169,8 +169,8 @@ bool Stereo::texturelessObjectPresent()
 
 bool Stereo::shouldBrake()
 {
-  if (visual == FLAGS::NEAR || texturelessObjectPresent())
-//  if(visual == FLAGS::NEAR)
+//  if (visual == FLAGS::NEAR || texturelessObjectPresent())
+  if(visual == FLAGS::NEAR)
     {
         return true;
     }

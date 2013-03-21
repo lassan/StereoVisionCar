@@ -110,17 +110,12 @@ class Packet : public ::google::protobuf::Message {
   inline ::std::string* release_frames();
   inline void set_allocated_frames(::std::string* frames);
 
-  // optional string speed = 3;
+  // optional double speed = 3;
   inline bool has_speed() const;
   inline void clear_speed();
   static const int kSpeedFieldNumber = 3;
-  inline const ::std::string& speed() const;
-  inline void set_speed(const ::std::string& value);
-  inline void set_speed(const char* value);
-  inline void set_speed(const char* value, size_t size);
-  inline ::std::string* mutable_speed();
-  inline ::std::string* release_speed();
-  inline void set_allocated_speed(::std::string* speed);
+  inline double speed() const;
+  inline void set_speed(double value);
 
   // @@protoc_insertion_point(class_scope:tutorial.Packet)
  private:
@@ -134,7 +129,7 @@ class Packet : public ::google::protobuf::Message {
   ::google::protobuf::UnknownFieldSet _unknown_fields_;
 
   ::std::string* frames_;
-  ::std::string* speed_;
+  double speed_;
   ::google::protobuf::int32 driving_;
 
   mutable int _cached_size_;
@@ -246,7 +241,7 @@ inline void Packet::set_allocated_frames(::std::string* frames) {
   }
 }
 
-// optional string speed = 3;
+// optional double speed = 3;
 inline bool Packet::has_speed() const {
   return (_has_bits_[0] & 0x00000004u) != 0;
 }
@@ -257,63 +252,15 @@ inline void Packet::clear_has_speed() {
   _has_bits_[0] &= ~0x00000004u;
 }
 inline void Packet::clear_speed() {
-  if (speed_ != &::google::protobuf::internal::kEmptyString) {
-    speed_->clear();
-  }
+  speed_ = 0;
   clear_has_speed();
 }
-inline const ::std::string& Packet::speed() const {
-  return *speed_;
-}
-inline void Packet::set_speed(const ::std::string& value) {
-  set_has_speed();
-  if (speed_ == &::google::protobuf::internal::kEmptyString) {
-    speed_ = new ::std::string;
-  }
-  speed_->assign(value);
-}
-inline void Packet::set_speed(const char* value) {
-  set_has_speed();
-  if (speed_ == &::google::protobuf::internal::kEmptyString) {
-    speed_ = new ::std::string;
-  }
-  speed_->assign(value);
-}
-inline void Packet::set_speed(const char* value, size_t size) {
-  set_has_speed();
-  if (speed_ == &::google::protobuf::internal::kEmptyString) {
-    speed_ = new ::std::string;
-  }
-  speed_->assign(reinterpret_cast<const char*>(value), size);
-}
-inline ::std::string* Packet::mutable_speed() {
-  set_has_speed();
-  if (speed_ == &::google::protobuf::internal::kEmptyString) {
-    speed_ = new ::std::string;
-  }
+inline double Packet::speed() const {
   return speed_;
 }
-inline ::std::string* Packet::release_speed() {
-  clear_has_speed();
-  if (speed_ == &::google::protobuf::internal::kEmptyString) {
-    return NULL;
-  } else {
-    ::std::string* temp = speed_;
-    speed_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
-    return temp;
-  }
-}
-inline void Packet::set_allocated_speed(::std::string* speed) {
-  if (speed_ != &::google::protobuf::internal::kEmptyString) {
-    delete speed_;
-  }
-  if (speed) {
-    set_has_speed();
-    speed_ = speed;
-  } else {
-    clear_has_speed();
-    speed_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
-  }
+inline void Packet::set_speed(double value) {
+  set_has_speed();
+  speed_ = value;
 }
 
 

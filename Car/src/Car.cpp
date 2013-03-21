@@ -2,7 +2,7 @@
 
 #define PORT_inst 13400
 
-Arduino arduino("/dev/ttyACM0", 56700);
+Arduino arduino("/dev/ttyACM0", 19200);
 Car::Car()
 {
     cout << "Creating car object." << endl;
@@ -129,7 +129,7 @@ void Car::brake()
 //returns speed as a string
 string Car::getSpeedString()
 {
-    arduino.serialport_writebyte(ARDUINOCMD::GET_SPEED);
+    arduino.serialport_writebyte(0x00);
     try
     {
         return arduino.serialport_read();
@@ -142,7 +142,7 @@ string Car::getSpeedString()
 
 double Car::getSpeed()
 {
-    arduino.serialport_writebyte(ARDUINOCMD::GET_SPEED);
+    arduino.serialport_writebyte(0x00);
     try
     {
         return atof(arduino.serialport_read().c_str());

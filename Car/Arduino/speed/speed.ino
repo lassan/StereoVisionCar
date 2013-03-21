@@ -1,7 +1,7 @@
 const int QRE1113_Pin = 2;
 const int brakeLEDPin = 13;
-const int leftIndicatorPin = 3;
-const int rightIndicatorPin = 4;
+const int leftIndicatorPin = 7;
+const int rightIndicatorPin = 8;
 
 boolean leftIndicatorOn = false;
 boolean rightIndicatorOn = false;
@@ -10,7 +10,7 @@ int leftIndicatorStatus = LOW;
 int rightIndicatorStatus = LOW;
 unsigned long indicatorTimer;
 long previousMillis = 0;
-long indicatorInterval = 250UL;
+long indicatorInterval = 250;
 
 int _pulseCount = 0;
 double _circumference = 0.1; //in meters
@@ -32,8 +32,11 @@ void setup(){
   TIMSK1 |= (1 << OCIE1A);
   
   pinMode(brakeLEDPin, OUTPUT);
+  pinMode(leftIndicatorPin, OUTPUT);
+  pinMode(rightIndicatorPin, OUTPUT);
+
   
-  Serial.begin(56700);
+  Serial.begin(19200);
 }
 
 
@@ -47,7 +50,7 @@ void loop(){
      }
   } 
   _prevQRE = QRE_Value;
-  
+        
   leftIndicator();
   rightIndicator();
 }
@@ -103,6 +106,7 @@ void leftIndicator()
       indicatorTimer = millis();
       if(indicatorTimer - previousMillis > indicatorInterval)
       {
+        previousMillis = indicatorTimer;
         if(leftIndicatorStatus == LOW)
           leftIndicatorStatus = HIGH;
         else 
@@ -120,6 +124,7 @@ void rightIndicator()
       indicatorTimer = millis();
       if(indicatorTimer - previousMillis > indicatorInterval)
       {
+        previousMillis = indicatorTimer;
         if(rightIndicatorStatus == LOW)
           rightIndicatorStatus = HIGH;
         else 

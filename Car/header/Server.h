@@ -27,7 +27,7 @@ private:
     void sendBrakeData(bool shouldBrake);
     void sendMessage(string message);
     void sendSpeed(string speed);
-    void checkForData();
+    void checkForData(Car &car);
     void listenForClient();
 
     int serversock, clientsock;

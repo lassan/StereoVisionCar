@@ -170,8 +170,9 @@ void ImageAcquisitionWorker()
 //                    imshow("disp", _disparityBuffer.leftImage);
 //                    waitKey(5);
 
-                    if (_stereo.shouldBrake())
+                    if (_stereo.shouldBrake()){
                         _car.brake();
+                    }
                     else
                         _car.turnBrakeLightOff();
 

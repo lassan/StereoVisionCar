@@ -82,7 +82,7 @@ void protobuf_AddDesc_Packet_2eproto() {
   ::google::protobuf::DescriptorPool::InternalAddGeneratedFile(
     "\n\014Packet.proto\022\010tutorial\"8\n\006Packet\022\017\n\007dr"
     "iving\030\001 \001(\005\022\016\n\006frames\030\002 \001(\t\022\r\n\005speed\030\003 \001"
-    "(\tB+\n\024com.example.tutorialB\021AddressBookP"
+    "(\001B+\n\024com.example.tutorialB\021AddressBookP"
     "rotosH\001", 127);
   ::google::protobuf::MessageFactory::InternalRegisterGeneratedFile(
     "Packet.proto", &protobuf_RegisterTypes);
@@ -124,7 +124,7 @@ void Packet::SharedCtor() {
   _cached_size_ = 0;
   driving_ = 0;
   frames_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
-  speed_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+  speed_ = 0;
   ::memset(_has_bits_, 0, sizeof(_has_bits_));
 }
 
@@ -135,9 +135,6 @@ Packet::~Packet() {
 void Packet::SharedDtor() {
   if (frames_ != &::google::protobuf::internal::kEmptyString) {
     delete frames_;
-  }
-  if (speed_ != &::google::protobuf::internal::kEmptyString) {
-    delete speed_;
   }
   if (this != default_instance_) {
   }
@@ -172,11 +169,7 @@ void Packet::Clear() {
         frames_->clear();
       }
     }
-    if (has_speed()) {
-      if (speed_ != &::google::protobuf::internal::kEmptyString) {
-        speed_->clear();
-      }
-    }
+    speed_ = 0;
   }
   ::memset(_has_bits_, 0, sizeof(_has_bits_));
   mutable_unknown_fields()->Clear();
@@ -216,20 +209,19 @@ bool Packet::MergePartialFromCodedStream(
         } else {
           goto handle_uninterpreted;
         }
-        if (input->ExpectTag(26)) goto parse_speed;
+        if (input->ExpectTag(25)) goto parse_speed;
         break;
       }
 
-      // optional string speed = 3;
+      // optional double speed = 3;
       case 3: {
         if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
-            ::google::protobuf::internal::WireFormatLite::WIRETYPE_LENGTH_DELIMITED) {
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_FIXED64) {
          parse_speed:
-          DO_(::google::protobuf::internal::WireFormatLite::ReadString(
-                input, this->mutable_speed()));
-          ::google::protobuf::internal::WireFormat::VerifyUTF8String(
-            this->speed().data(), this->speed().length(),
-            ::google::protobuf::internal::WireFormat::PARSE);
+          DO_((::google::protobuf::internal::WireFormatLite::ReadPrimitive<
+                   double, ::google::protobuf::internal::WireFormatLite::TYPE_DOUBLE>(
+                 input, &speed_)));
+          set_has_speed();
         } else {
           goto handle_uninterpreted;
         }
@@ -269,13 +261,9 @@ void Packet::SerializeWithCachedSizes(
       2, this->frames(), output);
   }
 
-  // optional string speed = 3;
+  // optional double speed = 3;
   if (has_speed()) {
-    ::google::protobuf::internal::WireFormat::VerifyUTF8String(
-      this->speed().data(), this->speed().length(),
-      ::google::protobuf::internal::WireFormat::SERIALIZE);
-    ::google::protobuf::internal::WireFormatLite::WriteString(
-      3, this->speed(), output);
+    ::google::protobuf::internal::WireFormatLite::WriteDouble(3, this->speed(), output);
   }
 
   if (!unknown_fields().empty()) {
@@ -301,14 +289,9 @@ void Packet::SerializeWithCachedSizes(
         2, this->frames(), target);
   }
 
-  // optional string speed = 3;
+  // optional double speed = 3;
   if (has_speed()) {
-    ::google::protobuf::internal::WireFormat::VerifyUTF8String(
-      this->speed().data(), this->speed().length(),
-      ::google::protobuf::internal::WireFormat::SERIALIZE);
-    target =
-      ::google::protobuf::internal::WireFormatLite::WriteStringToArray(
-        3, this->speed(), target);
+    target = ::google::protobuf::internal::WireFormatLite::WriteDoubleToArray(3, this->speed(), target);
   }
 
   if (!unknown_fields().empty()) {
@@ -336,11 +319,9 @@ int Packet::ByteSize() const {
           this->frames());
     }
 
-    // optional string speed = 3;
+    // optional double speed = 3;
     if (has_speed()) {
-      total_size += 1 +
-        ::google::protobuf::internal::WireFormatLite::StringSize(
-          this->speed());
+      total_size += 1 + 8;
     }
 
   }

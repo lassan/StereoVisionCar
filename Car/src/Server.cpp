@@ -7,7 +7,6 @@
 
 #include "../header/Server.h"
 
-
 void Server::initialise()
 {
     cout << "Initialising server. Please start the client" << endl;
@@ -20,7 +19,6 @@ void Server::initialise()
         exit(1);
     }
     serversock = socket(PF_INET, SOCK_STREAM, 0);
-
 
     /* setup server's IP and port */
     memset(&server, 0, sizeof(server));
@@ -47,27 +45,30 @@ void Server::initialise()
         exit(1);
     }
 
-
     hasClient = 1;
 }
 
-void Server::sendData(StereoPair &input, Mat &image, bool shouldBrake, Car& car, string message)
+void Server::sendData(StereoPair &input, Mat &image, bool shouldBrake, Car& car,
+        string message)
 {
-    try {
-    	tutorial::Packet info;
-    	if(shouldBrake){
-    		info.set_driving(1);
-    	}
-    	else{
-    		info.set_driving(0);
-    	}
-    	info.set_frames(message);
-    	info.set_speed(car.getSpeedString());
-    	char buf[20];
-    	info.SerializePartialToArray(buf,20);
-		send(clientsock, buf, 20, 0);
+    try
+    {
+        tutorial::Packet info;
+        if (shouldBrake)
+        {
+            info.set_driving(1);
+        }
+        else
+        {
+            info.set_driving(0);
+        }
+        info.set_frames(message);
+        info.set_speed(car.getSpeed());
+        char buf[20];
+        info.SerializeToArray(buf, 20);
+        send(clientsock, buf, 20, 0);
         displayImage(input, image);
-        checkForData();
+        checkForData(car);
     } catch (Exception & e)
     {
         car.brake();
@@ -118,7 +119,7 @@ void Server::sendImageToClient(Mat &image)
 
 }
 
-void  Server::sendBrakeData(bool shouldBrake)
+void Server::sendBrakeData(bool shouldBrake)
 {
     uint8_t brake[1];
 
@@ -140,9 +141,9 @@ void Server::sendMessage(string message)
     int bytes = send(clientsock, message.data(), 5, 0);
 
     if (bytes != 5)
-        {
-            throw "sendMessage failed";
-        }
+    {
+        throw "sendMessage failed";
+    }
 }
 
 void Server::sendSpeed(string speed)
@@ -155,7 +156,7 @@ void Server::sendSpeed(string speed)
     }
 }
 
-void Server::checkForData()
+void Server::checkForData(Car &car)
 {
     int n = 0;
     fd_set input;
@@ -192,6 +193,20 @@ void Server::checkForData()
                 break;
             case 0x02:
                 streamDisplayType = FLAGS::DISPARITY;
+                break;
+            case 0x03:
+                car.turnRightIndicatorOff();
+                car.turnLeftIndicatorOn();
+                break;
+            case 0x04:
+                car.turnLeftIndicatorOff();
+                break;
+            case 0x05:
+                car.turnLeftIndicatorOff();
+                car.turnRightIndicatorOn();
+                break;
+            case 0x06:
+                car.turnRightIndicatorOff();
                 break;
             default:
                 streamDisplayType = FLAGS::LEFT;
