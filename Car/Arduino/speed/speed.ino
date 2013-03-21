@@ -13,7 +13,7 @@ long previousMillis = 0;
 long indicatorInterval = 250;
 
 int _pulseCount = 0;
-double _circumference = 0.1; //in meters
+double _circumference = 0.15; //in meters
 double _speed = 0;
 
 int _prevQRE = 3000;

@@ -1,20 +1,5 @@
 #include "../header/main.h"
 
-Mat _M1, _D1, _M2, _D2, _R1, _R2, _P1, _P2, _Q;
-
-VideoCapture _leftCamera, _rightCamera;
-Mat _leftCameraMap1, _leftCameraMap2, _rightCameraMap1, _rightCameraMap2;
-
-/*Variables for timing*/
-int MAX_TIMING_ITERATIONS = 50;
-
-#define OMPTHREADS 2
-
-/*Variables for storing images*/
-StereoPair _buffer0;
-StereoPair _buffer1;
-StereoPair _disparityBuffer;
-
 /*Variables for synchronising workers*/
 bool _buffer0Processed = true;
 bool _buffer1Processed = true;
@@ -148,7 +133,7 @@ void ImageAcquisitionWorker()
 
     while (true)
     {
-        iterationTime = getTickCount();
+//        iterationTime = getTickCount();
 
 //        cout << "highest: " << _stereo.getClosestObjectVal()
 //                << "\tnumber: " << _stereo.getNumObjects()
@@ -176,17 +161,17 @@ void ImageAcquisitionWorker()
                     else
                         _car.turnBrakeLightOff();
 
+                    _messageToSend = intToString(prevFps);
+
+                    if (_serverEnabled)
+                        _server.sendData(_buffer0, _disparityBuffer.leftImage,
+                                _stereo.shouldBrake(), _car, intToString(prevFps));
+
                     if (_stereo.parameterChangeRequired())
                         _invalidateDispBufRight = true;
                 }
 
                 GetStereoImages(_buffer0);
-
-                _messageToSend = intToString(prevFps);
-
-                if (_serverEnabled)
-                    _server.sendData(_buffer0, _disparityBuffer.leftImage,
-                            _stereo.shouldBrake(), _car, _messageToSend);
 
                 _buffer0Processed = false;
 
@@ -197,6 +182,7 @@ void ImageAcquisitionWorker()
         {
             if (_buffer1Processed)
             {
+
                 if (_invalidateDispBufRight) //if parameter change required - ignore this buffer
                 {
                     _invalidateDispBufRight = false;
@@ -213,15 +199,16 @@ void ImageAcquisitionWorker()
 //                    imshow("disp", _disparityBuffer.rightImage);
 //                    waitKey(5);
 
+                    if (_serverEnabled)
+                        _server.sendData(_buffer1, _disparityBuffer.rightImage,
+                                _stereo.shouldBrake(), _car, intToString(prevFps));
+
+
                     if (_stereo.parameterChangeRequired())
                         _invalidateDispBufLeft = true;
                 }
 
                 GetStereoImages(_buffer1);
-
-                if (_serverEnabled)
-                    _server.sendData(_buffer0, _disparityBuffer.leftImage,
-                            _stereo.shouldBrake(), _car, _messageToSend);
 
                 _buffer1Processed = false;
 

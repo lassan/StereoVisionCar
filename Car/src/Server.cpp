@@ -67,11 +67,14 @@ void Server::sendData(StereoPair &input, Mat &image, bool shouldBrake, Car& car,
         char buf[20];
         info.SerializeToArray(buf, 20);
         send(clientsock, buf, 20, 0);
+
+
         displayImage(input, image);
         checkForData(car);
     } catch (Exception & e)
     {
         car.brake();
+        listenForClient();
         cout << e.msg << endl;
     }
 

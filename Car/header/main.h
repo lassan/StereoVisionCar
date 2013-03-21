@@ -31,4 +31,19 @@ void DisparityCalculationWorker();
 void GenerateSuperImposedImages();
 
 
+Mat _M1, _D1, _M2, _D2, _R1, _R2, _P1, _P2, _Q;
+
+VideoCapture _leftCamera, _rightCamera;
+Mat _leftCameraMap1, _leftCameraMap2, _rightCameraMap1, _rightCameraMap2;
+
+/*Variables for timing*/
+int MAX_TIMING_ITERATIONS = 5;
+
+#define OMPTHREADS 2
+
+/*Variables for storing images*/
+StereoPair _buffer0;
+StereoPair _buffer1;
+StereoPair _disparityBuffer;
+
 #endif /* MAIN_H_ */
