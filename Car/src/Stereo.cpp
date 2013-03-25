@@ -3,18 +3,23 @@
 #include "../header/Car.h"
 
 #define DISPCHANGEMAX 235
-#define DISPCHANGEMIN 125
+#define DISPCHANGEMIN 130
+#define NORMALISE_THRESH_MAX 0.45
+#define NORMALISE_THRESH_MIN 0.25
+
+bool brake = false;
 
 Stereo::Stereo(int SADWindowSize)
 {
     cout << "Creating Stereo object." << endl;
     maxDisp = 5;
-    minDisp = 2;
+    minDisp = 3;
     numObjects = 3;
     totalArea = 0;
     visual = FLAGS::FAR;
     stereoInfo = FLAGS::NORMAL;
     visualHistoryIndex = 0;
+    normaliseThresh = NORMALISE_THRESH_MAX;
 
     Initialise(minDisp, SADWindowSize);
 }
@@ -43,7 +48,10 @@ bool Stereo::visualChangeAllowed()
         return true;
     }
     else
+    {
+//        cout << "visual change not allowed " << endl;
         return false;
+    }
 }
 
 bool Stereo::changeParameters(int _SADWindowSize)
@@ -56,6 +64,7 @@ bool Stereo::changeParameters(int _SADWindowSize)
     {
         Initialise(maxDisp, _SADWindowSize);
         visual = FLAGS::NEAR;
+        normaliseThresh = NORMALISE_THRESH_MIN;
     }
     else if (dispChange == FLAGS::DECREMENT)
     {
@@ -63,6 +72,7 @@ bool Stereo::changeParameters(int _SADWindowSize)
         {
             Initialise(minDisp, _SADWindowSize);
             visual = FLAGS::FAR;
+            normaliseThresh = NORMALISE_THRESH_MAX;
         }
     }
     return true;
@@ -93,8 +103,13 @@ Mat Stereo::disparityMap(StereoPair &images)
     double maxVal;
     minMaxLoc(imgDisparity16S, &minVal, &maxVal);
 
+//    cout << (255 / (maxVal - minVal)) << endl;
+
 //Prepare for display
-    imgDisparity16S.convertTo(imgDisparity8U, CV_8UC1, 255 / (maxVal - minVal));
+
+//    imgDisparity16S.convertTo(imgDisparity8U, CV_8UC1, 255 / (maxVal - minVal));
+
+        imgDisparity16S.convertTo(imgDisparity8U, CV_8UC1, normaliseThresh);
 
     return imgDisparity8U;
 }
@@ -106,9 +121,6 @@ bool Stereo::detectObjects(Mat &dispMap)
     Mat element(3, 3, CV_8U, cv::Scalar(1));
 
     erode(dispMap, dispMap, element);
-
-    imshow("disp", dispMap);
-    waitKey(5);
 
     IplImage *dispIpl = new IplImage(dispMap); //create an IplImage from Mat
 
@@ -152,15 +164,25 @@ bool Stereo::detectObjects(Mat &dispMap)
         return false;
     }
 
-    if (closestObjectVal > DISPCHANGEMAX)
-        {dispChange = FLAGS::INCREMENT;}
-    else if (closestObjectVal < DISPCHANGEMIN)
-        {dispChange = FLAGS::DECREMENT;}
-    else
-        {dispChange = FLAGS::UNCHANGED;}
-    addFrameToHistory();
-
+    evaluate();
     return true;
+}
+
+void Stereo::evaluate()
+{
+    if (closestObjectVal > DISPCHANGEMAX)
+    {
+        dispChange = FLAGS::INCREMENT;
+    }
+    else if (closestObjectVal < DISPCHANGEMIN)
+    {
+        dispChange = FLAGS::DECREMENT;
+    }
+    else
+    {
+        dispChange = FLAGS::UNCHANGED;
+    }
+    addFrameToHistory();
 }
 
 bool Stereo::shouldBrake()
@@ -176,18 +198,18 @@ bool Stereo::shouldBrake()
         stereoInfo = FLAGS::NO_OBJECT;
         return true;
     }
-    if (numObjects < 2 && totalArea < 6500) //textureless object
-    {
+//    if (numObjects < 2 && totalArea < 6500) //textureless object
+//    {
 //        cout << "Textureless. Braking" << endl;
-        stereoInfo = FLAGS::TEXTURELESS;
-        return true;
-    }
-    if (totalArea < 8000) //roughly 1/6 of total possible
-    {
+//        stereoInfo = FLAGS::TEXTURELESS;
+//        return true;
+//    }
+//    if (totalArea < 6000) //roughly 1/6 of total possible
+//    {
 //        cout << "Too close. Braking" << endl;
-        stereoInfo = FLAGS::TOO_CLOSE;
-        return true;
-    }
+//        stereoInfo = FLAGS::TOO_CLOSE;
+//        return true;
+//    }
     else
         return false;
 }

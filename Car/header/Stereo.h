@@ -21,6 +21,7 @@ class Stereo
     int numObjects;
     int objArea;
     int totalArea;
+    double normaliseThresh;
 
     vector<Rect> boundingBoxes; //store all blob bounding boxes
 
@@ -35,6 +36,8 @@ public:
     bool parameterChangeRequired();
     Mat disparityMap(StereoPair&);
     bool detectObjects(Mat&);
+    void evaluate();
+
     FLAGS::VISUALS getVisualInfo();
     int getClosestObjectVal();
     int getNumObjects();
