@@ -38,7 +38,7 @@ VideoCapture _leftCamera, _rightCamera;
 Mat _leftCameraMap1, _leftCameraMap2, _rightCameraMap1, _rightCameraMap2;
 
 /*Variables for timing*/
-int MAX_TIMING_ITERATIONS = 5;
+int MAX_TIMING_ITERATIONS = 6; //must be even
 
 #define OMPTHREADS 2
 

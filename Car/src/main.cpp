@@ -12,7 +12,7 @@ string _messageToSend = "";
 bool _override = true;
 
 Server _server;
-Stereo _stereo(25);
+Stereo _stereo(21);
 Car _car;
 
 void Initialise()
@@ -165,11 +165,14 @@ void ImageAcquisitionWorker()
 
                 if (_stereo.parameterChangeRequired())
                     _invalidateDispBufRight = true;
+
+//                imshow("original", _buffer0.leftImage);
+//                waitKey(10);
+//                imshow("disp", _disparityBuffer.leftImage);
+//                waitKey(10);
             }
 
             GetStereoImages(_buffer0);
-
-            _buffer0Processed = false;
 
             iterationCounter++;
 
@@ -197,8 +200,6 @@ void ImageAcquisitionWorker()
 
             GetStereoImages(_buffer1);
 
-            _buffer1Processed = false;
-
             iterationCounter++;
 
 //                printInfo();
@@ -206,10 +207,10 @@ void ImageAcquisitionWorker()
 
         iterationTime = (getTickCount() - iterationTime) * 0.000000001;
         totalTime += iterationTime;
-        if (iterationCounter >= MAX_TIMING_ITERATIONS)
+        if (iterationCounter == MAX_TIMING_ITERATIONS)
         {
             prevFps = (iterationCounter) / totalTime;
-            cout << prevFps << endl;
+            cout << prevFps <<  " fps" << endl;
             iterationCounter = 0;
             totalTime = 0;
         }
@@ -233,13 +234,11 @@ void DisparityCalculationWorker()
         {
             _stereo.changeParameters(25);
             _disparityBuffer.rightImage = _stereo.disparityMap(_buffer1);
-            _buffer1Processed = true;
         }
 #pragma omp critical(buffer0)
         {
             _stereo.changeParameters(25);
             _disparityBuffer.leftImage = _stereo.disparityMap(_buffer0);
-            _buffer0Processed = true;
         }
     }
 }

@@ -105,11 +105,9 @@ Mat Stereo::disparityMap(StereoPair &images)
 
 //    cout << (255 / (maxVal - minVal)) << endl;
 
-//Prepare for display
-
 //    imgDisparity16S.convertTo(imgDisparity8U, CV_8UC1, 255 / (maxVal - minVal));
 
-        imgDisparity16S.convertTo(imgDisparity8U, CV_8UC1, normaliseThresh);
+    imgDisparity16S.convertTo(imgDisparity8U, CV_8UC1, normaliseThresh);
 
     return imgDisparity8U;
 }
@@ -136,12 +134,19 @@ bool Stereo::detectObjects(Mat &dispMap)
     CBlob* currentBlob;
     vector<int> meanPixelValues;
     vector<double> areas; //store all blob areas
+
     totalArea = 0; //reset value, the other ones get overwritten, this one gets added to
+    boundingBoxes.clear();
+
+//    Mat displayColor;
+//    dispMap.convertTo(displayColor, CV_32F, 1. / 255.);
+//    cv::cvtColor(displayColor, displayColor, CV_GRAY2RGB);
 
     for (int i = 0; i < numObjects; i++)
     {
         currentBlob = blobs.GetBlob(i);
         meanPixelValues.push_back(currentBlob->Mean(dispIpl));
+
         boundingBoxes.push_back(currentBlob->GetBoundingBox());
         totalArea += currentBlob->Area();
         areas.push_back(currentBlob->Area());
@@ -151,9 +156,12 @@ bool Stereo::detectObjects(Mat &dispMap)
 
     if (meanPixelValues.size() > 0)
     {
+//        sort(meanPixelValues.begin(), meanPixelValues.end());
+
         it = max_element(meanPixelValues.begin(), meanPixelValues.end());
         closestObjectVal = *it;
         objectBoundingBox = boundingBoxes[it - meanPixelValues.begin()]; //copy variable to return (it will go out of scope otherwise)
+
         objArea = areas[it - meanPixelValues.begin()];
     }
     else
@@ -163,6 +171,18 @@ bool Stereo::detectObjects(Mat &dispMap)
         totalArea = -1;
         return false;
     }
+
+//    int x = objectBoundingBox.x;
+//    int y = objectBoundingBox.y;
+//    int width = objectBoundingBox.width;
+//    int height = objectBoundingBox.height;
+//
+//    rectangle(displayColor, Point(x, y), Point(x + width, y + height),
+//            Scalar(0, 255, 255));
+//
+//
+//    imshow("dispColor", displayColor);
+//    waitKey(50);
 
     evaluate();
     return true;
